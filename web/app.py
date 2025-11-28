@@ -109,7 +109,10 @@ def create_web_app():
     app.router.add_get("/api/status", get_status)
     app.router.add_post("/api/notify", send_test_notification)
     app.router.add_post("/api/jellyfin/test", jellyfin_test)
-    app["index_html_cache"] = None
+
+    static_dir = os.path.join(os.path.dirname(__file__), "static")
+    app.router.add_static("/static/", static_dir, show_index=False)
+
     app["bot_connected"] = False
 
     app["auth_token"] = secrets.token_hex(16)
@@ -237,7 +240,6 @@ async def update_config(request: web.Request):
     if items_to_save:
         set_config_items(items_to_save)
 
-    request.app["index_html_cache"] = None
     logger.info(
         "Updated config keys: %s",
         ", ".join(changed) if changed else "none",
