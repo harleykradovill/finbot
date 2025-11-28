@@ -52,7 +52,7 @@ async def get_status(request: web.Request):
 
 async def send_test_notification(request: web.Request):
     if not request.app.get("bot_connected"):
-        return web.json_response({"ok": False, "error": "Bot not connect"}, status=400)
+        return web.json_response({"ok": False, "error": "Bot not connected"}, status=400)
 
     try:
         payload = await request.json()
@@ -61,6 +61,18 @@ async def send_test_notification(request: web.Request):
     
     channel_id = str(payload.get("channel_id", "")).strip()
     message = str(payload.get("message", "Hello from FinBot!")).strip()
+
+    sender = request.app.get("send_message_func")
+    if not sender:
+        return web.json_response({"ok": False, "error": "Send function not available"}, status=503)
+    if not channel_id:
+        return web.json_response({"ok": False, "error": "channel_id required"}, status=400)
+    
+    try:
+        await sender(channel_id, message)
+        return web.json_response({"ok": True})
+    except Exception as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=400)
 
     return web.json_response({
         "ok": True,

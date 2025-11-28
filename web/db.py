@@ -5,7 +5,7 @@ import os
 logger = logging.getLogger("finbot.web.db")
 
 def _db_path():
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), "finbot.db"))
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "../finbot.db"))
 
 def init_db():
     path = _db_path()

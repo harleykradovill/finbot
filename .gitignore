@@ -9,10 +9,10 @@ env/
 venv/
 
 # SQLite DB and sidecar files
-web/finbot.db
-web/finbot.db-journal
-web/finbot.db-wal
-web/finbot.db-shm
+finbot.db
+finbot.db-journal
+finbot.db-wal
+finbot.db-shm
 
 # Python specific files
 __pycache__/
