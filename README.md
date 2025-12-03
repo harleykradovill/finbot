@@ -1,9 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/harleykradovill/borealis/refs/heads/main/assets/images/borealis.png" 
+  <img src="https://raw.githubusercontent.com/harleykradovill/borealis/refs/heads/main/assets/images/borealis.png" width="100px">
 </p>
 
-
-<h1 align="center">FinBot</h1>
+<h1 align="center">Borealis</h1>
 <p align="center"><em>Monitor your Jellyfin server</em></p>
 
 ---
