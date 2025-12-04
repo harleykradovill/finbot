@@ -1,8 +1,13 @@
+"""
+Provides an application factory that constructs and configures a
+Flask instance used to server the Borealis site.
+"""
+
 from typing import Optional, Dict
 
 try:
     from flask import Flask, Response, render_template
-except Exception as exc:  # explicit runtime import error handling
+except Exception as exc:
     raise RuntimeError(
         "Flask is required to run the local config site. "
         "Install with: pip install Flask"
@@ -10,6 +15,13 @@ except Exception as exc:  # explicit runtime import error handling
 
 
 def create_app(test_config: Optional[Dict] = None) -> "Flask":
+    """
+    Create and configure the Borealis Flask application.
+    
+    :param test_config: Optional dictionary to inject configuration for tests
+    :return: A fully initialized Flash application instance for Borealis
+    :rtype: Flask
+    """
     app = Flask(
         __name__,
         static_folder="assets",
