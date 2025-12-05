@@ -74,3 +74,11 @@ def test_static_css_is_served(client) -> None:
     text = resp.get_data(as_text=True)
     assert ":root" in text
     assert "--bg" in text
+
+def test_static_logo_is_served(client) -> None:
+    """
+    Ensure that the Borealis logo image is served from assets.
+    """
+    resp = client.get("/assets/images/borealis.png")
+    assert resp.status_code == 200
+    assert resp.headers.get("Content-Type", "").startswith("image/")
