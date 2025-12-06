@@ -104,10 +104,13 @@ class SettingsService:
             if "jf_port" in clean and isinstance(clean["jf_port"], str):
                 settings.jf_port = clean["jf_port"]
 
-            # Encrypt if provided and non-empty
             if "jf_api_key" in clean:
                 api = clean["jf_api_key"]
-                if isinstance(api, str) and api.strip():
+
+                # Prevent accidental overwrite with masked asterisks
+                if isinstance(api, str) and api == "*" * 32:
+                    pass
+                elif isinstance(api, str) and api.strip():
                     ciphertext = self.fernet.encrypt(api.encode("utf-8")).decode("utf-8")
                     settings.jf_api_key_encrypted = ciphertext
                 else:

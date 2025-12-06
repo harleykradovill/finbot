@@ -24,6 +24,10 @@
         jf_api_key: document.getElementById('jf-api-key'),
       };
 
+      const API_MASK = '*'.repeat(32);
+      const clearBtn = document.getElementById('jf-api-clear');
+      let isApiMasked = false;
+
       async function loadSettings() {
         try {
           const resp = await fetch('/api/settings');
@@ -33,7 +37,19 @@
           if (fields.language) fields.language.value = data.language || 'en';
           if (fields.jf_host) fields.jf_host.value = data.jf_host || '';
           if (fields.jf_port) fields.jf_port.value = data.jf_port || '';
-          if (fields.jf_api_key) fields.jf_api_key.value = data.jf_api_key || '';
+          if (fields.jf_api_key) {
+            if (typeof data.jf_api_key === 'string' && data.jf_api_key.length > 0) {
+              fields.jf_api_key.value = API_MASK;
+              fields.jf_api_key.disabled = true;
+              isApiMasked = true;
+              if (clearBtn) clearBtn.hidden = false;
+            } else {
+              fields.jf_api_key.value = '';
+              fields.jf_api_key.disabled = false;
+              isApiMasked = false;
+              if (clearBtn) clearBtn.hidden = true;
+            }
+          }
         } catch (err) {
           showToast('Failed to load settings', 'error');
           console.error(err);
@@ -48,6 +64,12 @@
 
       async function saveSettings(payload) {
         try {
+          if ('jf_api_key' in payload) {
+            const v = payload.jf_api_key || '';
+            if (v === API_MASK) {
+              delete payload.jf_api_key;
+            }
+          }
           const resp = await fetch('/api/settings', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -69,7 +91,18 @@
             fields.jf_port.value = updated.jf_port || '';
           }
           if (fields.jf_api_key && 'jf_api_key' in updated) {
-            fields.jf_api_key.value = updated.jf_api_key || '';
+            if (typeof updated.jf_api_key === 'string' && updated.jf_api_key.length > 0) {
+              fields.jf_api_key.value = API_MASK;
+              fields.jf_api_key.disabled = true;
+              isApiMasked = true;
+              if (clearBtn) clearBtn.hidden = false;
+            } else {
+              // Key cleared
+              fields.jf_api_key.value = '';
+              fields.jf_api_key.disabled = false;
+              isApiMasked = false;
+              if (clearBtn) clearBtn.hidden = true;
+            }
           }
           showToast('Settings saved', 'success');
         } catch (err) {
@@ -107,7 +140,27 @@
         }
         if (fields.jf_api_key) {
           fields.jf_api_key.addEventListener('blur', () => {
-            scheduleSave({ jf_api_key: fields.jf_api_key.value.trim() });
+            if (isApiMasked || fields.jf_api_key.disabled) return;
+            const val = fields.jf_api_key.value.trim();
+            if (val && val !== API_MASK) {
+              scheduleSave({ jf_api_key: val });
+            }
+          });
+        }
+        if (clearBtn) {
+          clearBtn.addEventListener('click', async () => {
+            try {
+              await saveSettings({ jf_api_key: '' });
+              showToast('API key cleared', 'success');
+            } catch (e) {
+              showToast('Failed to clear API key', 'error');
+            } finally {
+              fields.jf_api_key.value = '';
+              fields.jf_api_key.disabled = false;
+              isApiMasked = false;
+              clearBtn.hidden = true;
+              fields.jf_api_key.focus();
+            }
           });
         }
       }

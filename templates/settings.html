@@ -82,7 +82,10 @@
             </div>
             <div class="form-field" style="grid-column: 1 / -1;">
               <label for="jf-api-key">API Key</label>
-              <input id="jf-api-key" name="jf_api_key" type="text" autocomplete="off" placeholder="Paste your API key">
+              <div class="input-with-action">
+                <input id="jf-api-key" name="jf_api_key" type="text" autocomplete="off" placeholder="Paste your API key" aria-describedby="jf-api-help">
+                <button type="button" id="jf-api-clear" class="icon-btn" aria-label="Clear API key" title="Clear API key" hidden>x</button>
+              </div>
               <div class="form-actions">
                 <button type="button" class="btn">Test Connection</button>
               </div>

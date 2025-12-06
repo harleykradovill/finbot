@@ -303,6 +303,42 @@ html, body {
   margin-top: 0.5rem;
 }
 
+.input-with-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-action > input {
+  flex: 1 1 auto;
+  padding-right: 2.25rem;
+}
+
+.icon-btn {
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #1a1a1a;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.25rem 0.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: #202020;
+}
+
+.icon-btn:focus {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.35);
+}
+
 @media (max-width: 640px) {
   .nav-links {
     gap: 0.5rem;

@@ -82,7 +82,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             return jsonify({
                 "ok": False,
                 "status": 400,
-                "message": "Missing host, port, or API key in stored settings."
+                "message": "Missing host, port, or API key in settings."
             }), 200
 
         if not port.isdigit():
