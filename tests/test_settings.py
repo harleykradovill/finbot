@@ -31,7 +31,6 @@ def test_settings_returns_ok_and_content(client) -> None:
     assert 'class="settings-container"' in body
     assert ">General<" in body
     assert ">Jellyfin<" in body
-    assert ">Connections<" in body
     assert ">About<" in body
 
 def test_navbar_has_active_settings(client) -> None:
@@ -67,13 +66,11 @@ def test_settings_tabs_have_roles_and_aria(client) -> None:
     # Tab panels have role="tabpanel" and ids
     assert 'role="tabpanel" id="general"' in body
     assert 'role="tabpanel" id="jellyfin"' in body
-    assert 'role="tabpanel" id="connections"' in body
     assert 'role="tabpanel" id="about"' in body
 
     # Initial visibility: only general visible; others hidden
     assert 'id="general"' in body and 'hidden' not in body.split('id="general"')[1][:100]
     assert 'id="jellyfin"' in body and 'hidden' in body.split('id="jellyfin"')[1][:100]
-    assert 'id="connections"' in body and 'hidden' in body.split('id="connections"')[1][:100]
     assert 'id="about"' in body and 'hidden' in body.split('id="about"')[1][:100]
 
 def test_settings_js_link_and_asset_served(client) -> None:
