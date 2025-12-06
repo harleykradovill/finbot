@@ -5,7 +5,7 @@
   --text-muted: #b3b3b3; 
   --accent: #ffffff;
   --border: #333;
-  --focus: #8ab4f8;      
+  --focus: #4e6b9b;      
 }
 
 * { box-sizing: border-box; }
@@ -149,11 +149,10 @@ html, body {
 
 .settings-content {
   background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1rem;
   min-height: 320px;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  transition: background-color 120ms ease;
 }
 
 .settings-placeholder .placeholder-title {
@@ -162,10 +161,119 @@ html, body {
   color: var(--accent);
 }
 
-.settings-placeholder .placeholder-subtitle {
+.settings-placeholder {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.95rem;
+}
+
+.settings-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 1.5rem;
+  margin-top: 1rem;
+}
+
+.settings-form .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-form label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.settings-form select {
+  appearance: none;
+  background: #1a1a1a;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  line-height: 1.25rem;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease,
+              background-color 120ms ease;
+}
+
+.settings-form select:hover {
+  background: #202020;
+}
+
+.settings-form select:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.35);
+}
+
+.settings-form input[type="text"],
+.settings-form input[type="url"],
+.settings-form input[type="number"] {
+  appearance: none;
+  background: #1a1a1a;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  line-height: 1.25rem;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease,
+              background-color 120ms ease;
+}
+
+.settings-form input[type="text"]:hover,
+.settings-form input[type="url"]:hover,
+.settings-form input[type="number"]:hover {
+  background: #202020;
+}
+
+.settings-form input[type="text"]:focus,
+.settings-form input[type="url"]:focus,
+.settings-form input[type="number"]:focus {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.35);
+}
+
+#jf-api-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+               "Liberation Mono", "Courier New", monospace;
+  letter-spacing: 0.2px;
+}
+
+.about-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.about-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-decoration: none;
+  color: #000;                  
+  background: #f0f0f0;         
+  border: 1px solid #e6e6e6;
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  line-height: 0.8;
+  transition: background-color 120ms ease, border-color 120ms ease,
+              box-shadow 120ms ease, color 120ms ease;
+}
+
+.about-list a:focus {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.35);
+}
+
+.about-list a::after {
+  content: "↗";
+  font-size: 0.9em;
+  opacity: 0.7;
 }
 
 @media (max-width: 640px) {

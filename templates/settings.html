@@ -33,16 +33,13 @@
     <section class="settings-shell" aria-label="Settings">
       <div class="settings-container" role="tablist" aria-orientation="vertical">
         <nav class="settings-nav" aria-label="Sections">
-          <a href="#general" class="settings-tab active" role="tab" aria-selected="true" tabindex="0">
+          <a id="general-tab" href="#general" class="settings-tab active" role="tab" aria-selected="true" aria-controls="general" tabindex="0">
             General
           </a>
-          <a href="#jellyfin" class="settings-tab" role="tab" aria-selected="false" tabindex="-1">
+          <a id="jellyfin-tab" href="#jellyfin" class="settings-tab" role="tab" aria-selected="false" aria-controls="jellyfin" tabindex="-1">
             Jellyfin
           </a>
-          <a href="#connections" class="settings-tab" role="tab" aria-selected="false" tabindex="-1">
-            Connections
-          </a>
-          <a href="#about" class="settings-tab" role="tab" aria-selected="false" tabindex="-1">
+          <a id="about-tab" href="#about" class="settings-tab" role="tab" aria-selected="false" aria-controls="about" tabindex="-1">
             About
           </a>
         </nav>
@@ -50,28 +47,59 @@
         <div class="settings-content" role="tabpanel" id="general" aria-labelledby="general-tab">
           <div class="settings-placeholder">
             <h2 class="placeholder-title">General</h2>
-            <p class="placeholder-subtitle">Settings will appear here.</p>
           </div>
+
+          <form class="settings-form" aria-label="General Settings">
+            <div class="form-field">
+              <label for="hour-format">Hour Format</label>
+              <select id="hour-format" name="hour_format">
+                <option value="12">12 Hours</option>
+                <option value="24">24 Hours</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label for="language">Language</label>
+              <select id="language" name="language">
+                <option value="en">English</option>
+              </select>
+            </div>
+          </form>
         </div>
 
         <div class="settings-content" role="tabpanel" id="jellyfin" aria-labelledby="jellyfin-tab" hidden>
           <div class="settings-placeholder">
             <h2 class="placeholder-title">Jellyfin</h2>
-            <p class="placeholder-subtitle">Settings will appear here.</p>
           </div>
-        </div>
-
-        <div class="settings-content" role="tabpanel" id="connections" aria-labelledby="connections-tab" hidden>
-          <div class="settings-placeholder">
-            <h2 class="placeholder-title">Connections</h2>
-            <p class="placeholder-subtitle">Settings will appear here.</p>
-          </div>
+          <form class="settings-form" aria-label="Jellyfin Settings">
+            <div class="form-field">
+              <label for="jf-host">Host</label>
+              <input id="jf-host" name="jf_host" type="text" inputmode="url" placeholder="127.0.0.1">
+            </div>
+            <div class="form-field">
+              <label for="jf-port">Port</label>
+              <input id="jf-port" name="jf_port" type="text" inputmode="numeric" placeholder="8096">
+            </div>
+            <div class="form-field" style="grid-column: 1 / -1;">
+              <label for="jf-api-key">API Key</label>
+              <input id="jf-api-key" name="jf_api_key" type="text" autocomplete="off" placeholder="Paste your API key">
+            </div>
+          </form>
         </div>
 
         <div class="settings-content" role="tabpanel" id="about" aria-labelledby="about-tab" hidden>
           <div class="settings-placeholder">
             <h2 class="placeholder-title">About</h2>
-            <p class="placeholder-subtitle">Settings will appear here.</p>
+          </div>
+          <div class="about-list" aria-label="About Borealis">
+            <p><strong>Borealis Version:</strong> <span id="borealis-version">0.1.0</span></p>
+            <p><strong>Latest Borealis Version:</strong> <span id="borealis-latest">0.1.0</span></p>
+            <p>
+              <strong>Repository:</strong>
+              <a href="https://github.com/harleykradovill/borealis" target="_blank" rel="noopener noreferrer">
+                github.com/harleykradovill/borealis
+              </a>
+            </p>
           </div>
         </div>
       </div>
