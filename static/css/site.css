@@ -42,6 +42,10 @@ html, body {
   box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.35);
 }
 
+.btn:disabled {
+  background: var(--text-muted);
+}
+
 .navbar {
   position: sticky;
   top: 0;

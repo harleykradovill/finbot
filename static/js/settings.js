@@ -11,9 +11,9 @@
         el.textContent = message;
         toastContainer.appendChild(el);
     
-        setTimeout(() => { // Auto-remove after 3s
+        setTimeout(() => { // Auto-remove after 5s
           el.remove();
-        }, 3000);
+        }, 5000);
       }
 
       const fields = {
@@ -212,7 +212,6 @@
   if (!testBtn) return;
 
   testBtn.addEventListener('click', async () => {
-    // Disable while testing to prevent duplicate requests
     const originalText = testBtn.textContent;
     testBtn.disabled = true;
     testBtn.textContent = 'Testing...';
@@ -247,9 +246,12 @@
       }
       console.error(err);
     } finally {
-      // Restore button state
-      testBtn.disabled = false;
+      // Restore button and disable to prevent spam
       testBtn.textContent = originalText;
+      const COOLDOWN_MS = 5000;
+      setTimeout(() => {
+        testBtn.disabled = false;
+      }, COOLDOWN_MS);
     }
   });
 })();
