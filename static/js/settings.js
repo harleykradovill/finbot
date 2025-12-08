@@ -28,6 +28,14 @@
       const clearBtn = document.getElementById('jf-api-clear');
       let isApiMasked = false;
 
+      const lastKnown = {
+        hour_format: null,
+        language: null,
+        jf_host: null,
+        jf_port: null,
+        jf_api_key: null,
+      };
+
       async function loadSettings() {
         try {
           const resp = await fetch('/api/settings');
@@ -50,6 +58,15 @@
               if (clearBtn) clearBtn.hidden = true;
             }
           }
+
+          lastKnown.hour_format = fields.hour_format ? fields.hour_format.value : null;
+          lastKnown.language = fields.language ? fields.language.value : null;
+          lastKnown.jf_host = fields.jf_host ? fields.jf_host.value.trim() : null;
+          lastKnown.jf_port = fields.jf_port ? fields.jf_port.value.trim() : null;
+          lastKnown.jf_api_key = typeof data.jf_api_key === 'string' && data.jf_api_key.length > 0
+            ? data.jf_api_key
+            : null;
+
         } catch (err) {
           showToast('Failed to load settings', 'error');
           console.error(err);
@@ -80,27 +97,32 @@
 
           if (fields.hour_format && 'hour_format' in updated) {
             fields.hour_format.value = updated.hour_format;
+            lastKnown.hour_format = updated.hour_format;
           }
           if (fields.language && 'language' in updated) {
             fields.language.value = updated.language;
+            lastKnown.language = updated.language;
           }
           if (fields.jf_host && 'jf_host' in updated) {
             fields.jf_host.value = updated.jf_host || '';
+            lastKnown.jf_host = (updated.jf_host || '').trim();
           }
           if (fields.jf_port && 'jf_port' in updated) {
             fields.jf_port.value = updated.jf_port || '';
+            lastKnown.jf_port = (updated.jf_port || '').trim();
           }
           if (fields.jf_api_key && 'jf_api_key' in updated) {
             if (typeof updated.jf_api_key === 'string' && updated.jf_api_key.length > 0) {
               fields.jf_api_key.value = API_MASK;
               fields.jf_api_key.disabled = true;
               isApiMasked = true;
+              lastKnown.jf_api_key = updated.jf_api_key;
               if (clearBtn) clearBtn.hidden = false;
             } else {
-              // Key cleared
               fields.jf_api_key.value = '';
               fields.jf_api_key.disabled = false;
               isApiMasked = false;
+              lastKnown.jf_api_key = null;
               if (clearBtn) clearBtn.hidden = true;
             }
           }
@@ -114,35 +136,53 @@
       function bindAutosave() {
         if (fields.hour_format) {
           fields.hour_format.addEventListener('blur', () => {
-            scheduleSave({ hour_format: fields.hour_format.value });
+            const v = fields.hour_format.value;
+            if (v !== lastKnown.hour_format) {
+              scheduleSave({ hour_format: v });
+            }
           });
           fields.hour_format.addEventListener('change', () => {
-            scheduleSave({ hour_format: fields.hour_format.value });
+            const v = fields.hour_format.value;
+            if (v !== lastKnown.hour_format) {
+              scheduleSave({ hour_format: v });
+            }
           });
         }
         if (fields.language) {
           fields.language.addEventListener('blur', () => {
-            scheduleSave({ language: fields.language.value });
+            const v = fields.language.value;
+            if (v !== lastKnown.language) {
+              scheduleSave({ language: v });
+            }
           });
           fields.language.addEventListener('change', () => {
-            scheduleSave({ language: fields.language.value });
+            const v = fields.language.value;
+            if (v !== lastKnown.language) {
+              scheduleSave({ language: v });
+            }
           });
         }
         if (fields.jf_host) {
           fields.jf_host.addEventListener('blur', () => {
-            scheduleSave({ jf_host: fields.jf_host.value.trim() });
+            const v = fields.jf_host.value.trim();
+            if (v !== lastKnown.jf_host) {
+              scheduleSave({ jf_host: v });
+            }
           });
         }
         if (fields.jf_port) {
           fields.jf_port.addEventListener('blur', () => {
-            scheduleSave({ jf_port: fields.jf_port.value.trim() });
+            const v = fields.jf_port.value.trim();
+            if (v !== lastKnown.jf_port) {
+              scheduleSave({ jf_port: v });
+            }
           });
         }
         if (fields.jf_api_key) {
           fields.jf_api_key.addEventListener('blur', () => {
             if (isApiMasked || fields.jf_api_key.disabled) return;
             const val = fields.jf_api_key.value.trim();
-            if (val && val !== API_MASK) {
+            if (val && val !== API_MASK && val !== (lastKnown.jf_api_key || '')) {
               scheduleSave({ jf_api_key: val });
             }
           });
