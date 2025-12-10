@@ -195,12 +195,25 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         if result and result.get("ok"):
             if isinstance(data, dict) and isinstance(data.get("Items"), list):
                 flat = data["Items"]
+                for lib in flat:
+                    lib_id = lib.get("Id")
+                    if lib_id:
+                        stats = jf.library_stats(lib_id)
+                        if stats.get("ok"):
+                            lib["ItemCount"] = stats.get("item_count", 0)
+
                 result["data"] = flat
                 try:
                     analytics.upsert_libraries(flat)
                 except Exception:
                     pass
             elif isinstance(data, list):
+                for lib in data:
+                    lib_id = lib.get("Id")
+                    if lib_id:
+                        stats = jf.library_stats(lib_id)
+                        if stats.get("ok"):
+                            lib["ItemCount"] = stats.get("item_count", 0)
                 try:
                     analytics.upsert_libraries(data)
                 except Exception:

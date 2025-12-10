@@ -113,21 +113,33 @@ class JellyfinClient:
 
     def system_info(self) -> Dict[str, Any]:
         """
-        Returns Jellyfin system info: /System/Info
+        Returns Jellyfin system info
         """
         return self._get("/System/Info")
 
     def users(self) -> Dict[str, Any]:
         """
-        Returns list of users: /Users
+        Returns list of users
         """
         return self._get("/Users")
 
     def libraries(self) -> Dict[str, Any]:
         """
-        Returns media folders: /Library/MediaFolders
+        Returns media folders
         """
         return self._get("/Library/MediaFolders")
+    
+    def library_items(self, library_id: str) -> Dict[str, Any]:
+        return self._get(f"/Items?ParentId={library_id}&Recursive=true&Limit=0")
+
+    def library_stats(self, library_id: str) -> Dict[str, Any]:
+        result = self.library_items(library_id)
+        if result.get("ok") and isinstance(result.get("data"), dict):
+            return {
+                "ok": True,
+                "item_count": result["data"].get("TotalRecordCount", 0)
+            }
+        return {"ok": False, "item_count": 0}
 
 
 def create_client(settings_service: SettingsService) -> JellyfinClient:
