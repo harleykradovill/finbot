@@ -11,11 +11,11 @@ from services.sync_service import SyncService
 @dataclass
 class SyncScheduler:
     """
-    Background thread that runs partial syncs on an interval.
+    Background thread that runs full syncs on an interval.
     """
     
     sync_service: SyncService
-    interval_seconds: int = 300  # 5 minutes
+    interval_seconds: int = 86400  # 1 day
     
     def __post_init__(self) -> None:
         self._running = False
@@ -42,12 +42,10 @@ class SyncScheduler:
         print("SyncScheduler stopped")
     
     def _run_loop(self) -> None:
-        """Main loop that runs partial syncs periodically."""
+        """Main loop that runs full syncs periodically."""
         while self._running:
             try:
-                result = self.sync_service.sync_partial(
-                    sync_users=True,
-                )
+                result = self.sync_service.sync_full()
                 status = "SUCCESS" if result.success else "FAILED"
                 print(
                     f"Scheduled sync {status}: "

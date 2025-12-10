@@ -64,7 +64,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
 
     sync_scheduler = SyncScheduler(
         sync_service=sync,
-        interval_seconds=300
+        interval_seconds=86400
     )
 
     if not app.config.get("DEBUG"):
@@ -327,13 +327,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         payload = request.get_json(silent=True) or {}
         sync_type = payload.get("type", "full")
 
-        if sync_type == "partial":
-            sync_users = payload.get("sync_users", True)
-            result = sync.sync_partial(
-                sync_users=sync_users,
-            )
-        else:
-            result = sync.sync_full()
+        result = sync.sync_full()
 
         return jsonify({
             "ok": result.success,
