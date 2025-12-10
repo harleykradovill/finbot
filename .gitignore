@@ -4,7 +4,9 @@
 .github/*
 !.github/workflows/
 borealis.db
+analytics.db
 api/jellyfin-api.js
+/api/jellyfin-openapi-stable.json
 
 # Environment
 *.env

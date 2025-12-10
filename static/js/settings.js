@@ -1,6 +1,8 @@
 (function () {
   const tabs = Array.from(document.querySelectorAll('.settings-tab'));
-  const panels = Array.from(document.querySelectorAll('.settings-content'));
+  const panels = Array.from(
+    document.querySelectorAll('.settings-content[role="tabpanel"]')
+  );
 
   const toastContainer = document.getElementById('toast-container');
   function showToast(message, kind = "success") {
@@ -244,6 +246,7 @@
 
   const testConnectionBtn = buttons[0] || null;
   const testSystemInfoBtn = buttons[1] || null;
+  const pullDataBtn = buttons[2] || null;
 
   function showToast(message, kind = "success") {
     const toastContainer = document.getElementById('toast-container');
@@ -310,4 +313,171 @@
       }
     });
   }
+
+  if (pullDataBtn) {
+    pullDataBtn.addEventListener('click', async () => {
+      const originalText = pullDataBtn.textContent;
+      pullDataBtn.disabled = true;
+      pullDataBtn.textContent = 'Pulling...';
+
+      try {
+        const usersResp = await fetch('/api/jellyfin/users', { method: 'GET' });
+        const usersResult = await usersResp.json();
+
+        const libsResp = await fetch('/api/jellyfin/libraries', { method: 'GET' });
+        const libsResult = await libsResp.json();
+
+        const usersOk = usersResult && usersResult.ok;
+        const libsOk = libsResult && libsResult.ok;
+
+        const userCount = Array.isArray(usersResult?.data) ? usersResult.data.length : 0;
+        const libCount = Array.isArray(libsResult?.data) ? libsResult.data.length : 0;
+
+        if (usersOk || libsOk) {
+          const msg = `Pulled: users=${userCount}, libraries=${libCount}`;
+          showToast(msg, 'success');
+        } else {
+          const uStatus = usersResult?.status ?? usersResp.status;
+          const lStatus = libsResult?.status ?? libsResp.status;
+          showToast(`Pull failed (users: ${uStatus}, libs: ${lStatus})`, 'error');
+        }
+      } catch (err) {
+        showToast('Failed to pull data', 'error');
+        console.error(err);
+      } finally {
+        pullDataBtn.textContent = originalText;
+        const COOLDOWN_MS = 5000;
+        setTimeout(() => { pullDataBtn.disabled = false; }, COOLDOWN_MS);
+      }
+    });
+  }
+})();
+
+(function () {
+  const panel = document.getElementById('libraries');
+  const list = document.getElementById('libraries-list');
+  const empty = document.getElementById('libraries-empty');
+  const librariesTab = document.getElementById('libraries-tab');
+
+  function showToast(message, kind = "success") {
+    const toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) return;
+    const el = document.createElement('div');
+    el.className = `toast ${kind}`;
+    el.setAttribute('role', 'status');
+    el.textContent = message;
+    toastContainer.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+
+  async function fetchJson(path) {
+    try {
+      const resp = await fetch(path, { method: 'GET' });
+      const data = await resp.json();
+      if (!resp.ok) {
+        return { ok: false, status: resp.status, message: 'HTTP error', data: null };
+      }
+      return data;
+    } catch (err) {
+      return { ok: false, status: 0, message: err?.message || 'Network error', data: null };
+    }
+  }
+
+  async function postJson(path, body) {
+    try {
+      const resp = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        return { ok: false, status: resp.status, message: 'HTTP error', data: null };
+      }
+      return data;
+    } catch (err) {
+      return { ok: false, status: 0, message: err?.message || 'Network error', data: null };
+    }
+  }
+
+  async function loadLibraries() {
+    const result = await fetchJson('/api/analytics/libraries');
+    if (!result.ok) {
+      showToast(result.message || 'Failed to load libraries', 'error');
+      return;
+    }
+    const libs = Array.isArray(result.data) ? result.data : [];
+    renderLibraries(libs);
+  }
+
+  function renderLibraries(libs) {
+    if (!list || !empty) return;
+    list.innerHTML = '';
+    const hasItems = libs.length > 0;
+    empty.hidden = hasItems;
+
+    libs.forEach(lib => {
+      const li = document.createElement('li');
+
+      const name = document.createElement('span');
+      const itemCount = typeof lib.item_count === 'number' ? lib.item_count : 0;
+      name.textContent = `${lib.name} (${itemCount} items)`;
+
+      const tracked = document.createElement('span');
+      tracked.textContent = lib.tracked ? 'Tracked' : 'Not tracked';
+
+      const toggleWrap = document.createElement('label');
+      toggleWrap.className = 'switch';
+      toggleWrap.setAttribute('aria-label', `Toggle tracking for ${lib.name}`);
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = !!lib.tracked;
+
+      const slider = document.createElement('span');
+      slider.className = 'slider';
+
+      toggleWrap.appendChild(checkbox);
+      toggleWrap.appendChild(slider);
+
+      checkbox.addEventListener('change', async () => {
+        checkbox.disabled = true;
+        const desired = checkbox.checked;
+        const path = `/api/analytics/library/${encodeURIComponent(lib.jellyfin_id)}/tracked`;
+        const result = await postJson(path, { tracked: desired });
+        if (result.ok && result.data) {
+          lib.tracked = !!result.data.tracked;
+          tracked.textContent = lib.tracked ? 'Tracked' : 'Not tracked';
+          showToast(`${lib.name}: tracking ${lib.tracked ? 'enabled' : 'disabled'}`, 'success');
+        } else {
+          checkbox.checked = !!lib.tracked;
+          const msg = result.message || 'Failed to update tracking';
+          showToast(`${lib.name}: ${msg}`, 'error');
+        }
+        checkbox.disabled = false;
+      });
+
+      li.appendChild(name);
+      li.appendChild(tracked);
+      li.appendChild(toggleWrap);
+      list.appendChild(li);
+    });
+  }
+
+  function loadIfVisible() {
+    if (panel && !panel.hidden) {
+      loadLibraries();
+    }
+  }
+
+  if (location.hash === '#libraries') {
+    setTimeout(loadIfVisible, 0);
+  }
+
+  if (librariesTab) {
+    librariesTab.addEventListener('click', () => {
+      setTimeout(loadIfVisible, 0);
+    });
+  }
+  window.addEventListener('hashchange', loadIfVisible);
 })();

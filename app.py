@@ -48,6 +48,11 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         encryption_key_path=app.config["ENCRYPTION_KEY_PATH"],
     )
 
+    from analytics_store import AnalyticsService
+    analytics = AnalyticsService(
+        database_url="sqlite:///analytics.db"
+    )
+
     from jellyfin import create_client
     jf = create_client(svc)
 
@@ -175,12 +180,54 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
     @app.get("/api/jellyfin/users")
     def api_jf_users() -> Response:
         result = jf.users()
+        if result and result.get("ok") and isinstance(result.get("data"), list):
+            try:
+                analytics.upsert_users(result["data"])
+            except Exception:
+                pass
         return jsonify(result), 200
 
     @app.get("/api/jellyfin/libraries")
     def api_jf_libraries() -> Response:
         result = jf.libraries()
+
+        data = result.get("data")
+        if result and result.get("ok"):
+            if isinstance(data, dict) and isinstance(data.get("Items"), list):
+                flat = data["Items"]
+                result["data"] = flat
+                try:
+                    analytics.upsert_libraries(flat)
+                except Exception:
+                    pass
+            elif isinstance(data, list):
+                try:
+                    analytics.upsert_libraries(data)
+                except Exception:
+                    pass
+
         return jsonify(result), 200
+
+    @app.get("/api/analytics/users")
+    def api_analytics_users() -> Response:
+        return jsonify({"ok": True, "data": analytics.list_users()}), 200
+
+    @app.get("/api/analytics/libraries")
+    def api_analytics_libraries() -> Response:
+        return jsonify({"ok": True, "data": analytics.list_libraries()}), 200
+
+    @app.post("/api/analytics/library/<string:jellyfin_id>/tracked")
+    def api_analytics_set_tracked(jellyfin_id: str) -> Response:
+        payload = request.get_json(silent=True) or {}
+        tracked = payload.get("tracked", None)
+        if not isinstance(tracked, bool):
+            return jsonify({"ok": False, "status": 400, "message": "tracked must be boolean"}), 200
+
+        updated = analytics.set_library_tracked(jellyfin_id, tracked)
+        if not updated:
+            return jsonify({"ok": False, "status": 404, "message": "Library not found"}), 200
+
+        return jsonify({"ok": True, "data": updated}), 200
 
     return app
 

@@ -92,6 +92,7 @@
               <div class="form-actions">
                 <button type="button" class="btn">Test Connection</button>
                 <button type="button" class="btn">Test SystemInfo</button>
+                <button type="button" class="btn">Pull Data</button>
               </div>
             </div>
           </form>
@@ -100,6 +101,15 @@
         <div class="settings-content" role="tabpanel" id="libraries" aria-labelledby="libraries-tab" hidden>
           <div class="settings-placeholder">
             <h2 class="placeholder-title">Libraries</h2>
+          </div>
+
+          <div id="libraries-panel" class="settings-content" role="region" aria-label="Analytics Libraries">
+            <div id="libraries-empty" class="settings-placeholder" hidden>
+              <h3 class="placeholder-title">No libraries found</h3>
+              <p>Fetch libraries from Jellyfin and then manage tracking here.</p>
+            </div>
+
+            <ul id="libraries-list" class="libraries-list" aria-labelledby="libraries-help" aria-label="Library items"></ul>
           </div>
         </div>
 
