@@ -4,6 +4,7 @@ Flask instance used to server the Borealis site.
 """
 
 from typing import Optional, Dict
+import time
 
 try:
     from flask import Flask, Response, render_template, jsonify, request, send_from_directory
@@ -64,7 +65,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
 
     sync_scheduler = SyncScheduler(
         sync_service=sync,
-        interval_seconds=86400
+        interval_seconds=1800  # 30 min
     )
 
     if not app.config.get("DEBUG"):
@@ -107,7 +108,46 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
     @app.put("/api/settings")
     def update_settings() -> Response:
         payload = request.get_json(silent=True) or {}
+        
+        # Get current settings before update
+        current_settings = svc.get()
+        had_server = (
+            current_settings.get("jf_host")
+            and current_settings.get("jf_port")
+            and current_settings.get("jf_api_key")
+        )
+        
+        # Update settings
         updated = svc.update(payload)
+        
+        # Check if server is being added for the first time
+        has_server = (
+            updated.get("jf_host")
+            and updated.get("jf_port")
+            and updated.get("jf_api_key")
+        )
+        
+        # If adding server for first time, trigger initial sync
+        if not had_server and has_server:
+            # Mark that we're starting initial sync to prevent 
+            # scheduler from also triggering it
+            repo.set_last_activity_log_sync(int(time.time()))
+            
+            # Trigger sync_initial in background thread
+            import threading
+            def run_initial_sync():
+                try:
+                    sync.sync_initial()
+                except Exception as exc:
+                    import traceback
+                    traceback.print_exc()
+            
+            sync_thread = threading.Thread(
+                target=run_initial_sync,
+                daemon=True
+            )
+            sync_thread.start()
+        
         return jsonify(updated), 200
     
     @app.teardown_appcontext
@@ -176,6 +216,89 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
                     "ok": False,
                     "status": status,
                     "message": f"Jellyfin returned status {status}."
+                }), 200
+        except HTTPError as he:
+            return jsonify({
+                "ok": False,
+                "status": he.code,
+                "message": (
+                    f"HTTP error from Jellyfin ({he.code}): "
+                    f"{he.reason or 'Unknown'}"
+                )
+            }), 200
+        except URLError as ue:
+            reason = getattr(ue, "reason", "Unknown")
+            return jsonify({
+                "ok": False,
+                "status": 0,
+                "message": f"Network error: {reason}"
+            }), 200
+        except Exception as exc:
+            return jsonify({
+                "ok": False,
+                "status": 0,
+                "message": f"Unexpected error: {str(exc)}"
+            }), 200
+        
+    @app.post("/api/test-connection-with-credentials")
+    def test_connection_with_credentials() -> Response:
+        """
+        Test Jellyfin connectivity with provided credentials.
+        """
+        from urllib.request import Request, urlopen
+        from urllib.error import URLError, HTTPError
+
+        payload = request.get_json(silent=True) or {}
+        host = (payload.get("jf_host") or "").strip()
+        port = (payload.get("jf_port") or "").strip()
+        token = (payload.get("jf_api_key") or "").strip()
+
+        if not host or not port or not token:
+            return jsonify({
+                "ok": False,
+                "status": 400,
+                "message": (
+                    "Missing host, port, or API key."
+                )
+            }), 200
+
+        if not port.isdigit():
+            return jsonify({
+                "ok": False,
+                "status": 400,
+                "message": "Port must be numeric."
+            }), 200
+
+        # Parse host to handle http:// or https:// prefixes
+        scheme = "http"
+        if host.startswith(("http://", "https://")):
+            if host.startswith("https://"):
+                scheme = "https"
+                host = host.removeprefix("https://")
+            elif host.startswith("http://"):
+                scheme = "http"
+                host = host.removeprefix("http://")
+
+        url = f"{scheme}://{host}:{port}/System/Info"
+
+        req = Request(url, method="GET")
+        req.add_header("X-Emby-Token", token)
+        req.add_header("Accept", "application/json")
+
+        try:
+            with urlopen(req, timeout=3.0) as resp:
+                status = getattr(resp, "status", 200)
+                if 200 <= status < 300:
+                    return jsonify({
+                        "ok": True,
+                        "status": status,
+                    }), 200
+                return jsonify({
+                    "ok": False,
+                    "status": status,
+                    "message": (
+                        f"Jellyfin returned status {status}."
+                    )
                 }), 200
         except HTTPError as he:
             return jsonify({
@@ -293,7 +416,29 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         """
         Retrieve all libraries from repository.
         """
-        return jsonify({"ok": True, "data": repo.list_libraries()}), 200
+        settings = svc.get()
+        
+        if not (
+            settings.get("jf_host")
+            and settings.get("jf_port")
+            and settings.get("jf_api_key")
+        ):
+            return jsonify({
+                "ok": True,
+                "data": []
+            }), 200
+        
+        try:
+            libraries = repo.list_libraries(include_archived=False)
+            return jsonify({
+                "ok": True,
+                "data": libraries
+            }), 200
+        except Exception as exc:
+            return jsonify({
+                "ok": False,
+                "message": f"Failed to fetch libraries: {str(exc)}"
+            }), 500
 
     @app.post("/api/analytics/library/<string:jellyfin_id>/tracked")
     def api_analytics_set_tracked(jellyfin_id: str) -> Response:
@@ -391,6 +536,48 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             return jsonify({
                 "ok": False,
                 "message": f"Failed to fetch user stats: {str(exc)}"
+            }), 500
+        
+    @app.get("/api/analytics/server/sync-progress")
+    def api_analytics_server_sync_progress() -> Response:
+        """
+        Get the current progress of initial activity log sync.
+        """
+        try:
+            # Check if there's an in-progress full activity log sync
+            task = repo.get_latest_sync_task()
+
+            if not task or task["result"] != "RUNNING":
+                # No sync in progress
+                return jsonify({
+                    "ok": True,
+                    "syncing": False,
+                    "processed_events": 0,
+                    "total_events": 0
+                }), 200
+
+            import json
+            log_data = {}
+            if task.get("log_json"):
+                try:
+                    log_data = json.loads(task["log_json"])
+                except Exception:
+                    pass
+
+            processed = log_data.get("items_synced", 0)
+            total = log_data.get("total_events", 1)
+
+            return jsonify({
+                "ok": True,
+                "syncing": True,
+                "processed_events": processed,
+                "total_events": total
+            }), 200
+
+        except Exception as exc:
+            return jsonify({
+                "ok": False,
+                "message": f"Failed to fetch sync progress: {str(exc)}"
             }), 500
 
     return app

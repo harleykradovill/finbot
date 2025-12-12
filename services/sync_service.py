@@ -453,3 +453,80 @@ class SyncService:
             )
 
             return result
+        
+    def sync_initial(self) -> SyncResult:
+        """
+        Perform initial server setup sync combining full data sync
+        and full activity log pull.
+        """
+        import time
+
+        start_time = time.time()
+        errors: List[str] = []
+
+        task_id = self.repository.create_task_log(
+            name="Initial Server Setup Sync",
+            task_type="sync",
+            execution_type="initial"
+        )
+
+        try:
+            # Step 1: Sync users, libraries, and items
+            full_result = self.sync_full()
+            if not full_result.success and full_result.errors:
+                errors.extend(full_result.errors)
+
+            # Step 2: Sync activity log
+            activity_result = (
+                self.sync_activity_log_full()
+            )
+            if not activity_result.success and activity_result.errors:
+                errors.extend(activity_result.errors)
+
+            duration_ms = int((time.time() - start_time) * 1000)
+            result = SyncResult(
+                success=(
+                    full_result.success
+                    and activity_result.success
+                ),
+                duration_ms=duration_ms,
+                users_synced=full_result.users_synced,
+                libraries_synced=full_result.libraries_synced,
+                items_synced=(
+                    full_result.items_synced
+                    + activity_result.items_synced
+                ),
+                errors=errors,
+            )
+
+            self.repository.complete_task_log(
+                task_id=task_id,
+                result=(
+                    "SUCCESS" if result.success else "FAILED"
+                ),
+                log_data=result.to_dict(),
+            )
+
+            return result
+
+        except Exception as exc:
+            duration_ms = int((time.time() - start_time) * 1000)
+            error_msg = f"Unexpected error during initial sync: {str(exc)}"
+            errors.append(error_msg)
+
+            result = SyncResult(
+                success=False,
+                duration_ms=duration_ms,
+                users_synced=0,
+                libraries_synced=0,
+                items_synced=0,
+                errors=errors,
+            )
+
+            self.repository.complete_task_log(
+                task_id=task_id,
+                result="FAILED",
+                log_data=result.to_dict(),
+            )
+
+            return result

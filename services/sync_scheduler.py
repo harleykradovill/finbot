@@ -57,44 +57,42 @@ class SyncScheduler:
         """
         while self._running:
             try:
-                # Check if initial activity log sync is needed
-                if (
-                    self.sync_service.repository
-                    .is_initial_activity_log_sync_needed()
-                ):
-                    # Initial full sync from activity log
-                    result = (
-                        self.sync_service
-                        .sync_activity_log_full()
+                # Phase 1: Full sync of users, libraries, items
+                full_result = (
+                    self.sync_service.sync_full()
+                )
+                status = (
+                    "SUCCESS" if full_result.success
+                    else "FAILED"
+                )
+                print(
+                    f"Full sync {status}: "
+                    f"{full_result.users_synced} users, "
+                    f"{full_result.libraries_synced} libraries, "
+                    f"{full_result.items_synced} items "
+                    f"({full_result.duration_ms}ms)"
+                )
+
+                # Phase 2: Incremental activity log sync
+                activity_result = (
+                    self.sync_service
+                    .sync_activity_log_incremental(
+                        minutes_back=30
                     )
-                    status = (
-                        "SUCCESS" if result.success else "FAILED"
-                    )
-                    print(
-                        f"Initial activity log sync {status}: "
-                        f"{result.items_synced} events "
-                        f"({result.duration_ms}ms)"
-                    )
-                else:
-                    # Incremental sync for recent activity
-                    result = (
-                        self.sync_service
-                        .sync_activity_log_incremental(
-                            minutes_back=30
-                        )
-                    )
-                    status = (
-                        "SUCCESS" if result.success else "FAILED"
-                    )
-                    print(
-                        f"Incremental activity log sync {status}: "
-                        f"{result.items_synced} events "
-                        f"({result.duration_ms}ms)"
-                    )
+                )
+                status = (
+                    "SUCCESS" if activity_result.success
+                    else "FAILED"
+                )
+                print(
+                    f"Incremental activity log sync {status}: "
+                    f"{activity_result.items_synced} events "
+                    f"({activity_result.duration_ms}ms)"
+                )
+
             except Exception as exc:
                 print(f"Scheduled sync error: {exc}")
 
-            # Sleep in small increments to allow quick shutdown
             for _ in range(self.interval_seconds):
                 if not self._running:
                     break

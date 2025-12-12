@@ -18,195 +18,6 @@
     }, 5000);
   }
 
-  const fields = {
-    hour_format: document.getElementById('hour-format'),
-    language: document.getElementById('language'),
-    jf_host: document.getElementById('jf-host'),
-    jf_port: document.getElementById('jf-port'),
-    jf_api_key: document.getElementById('jf-api-key'),
-  };
-
-  const API_MASK = '*'.repeat(32);
-  const clearBtn = document.getElementById('jf-api-clear');
-  let isApiMasked = false;
-
-  const lastKnown = {
-    hour_format: null,
-    language: null,
-    jf_host: null,
-    jf_port: null,
-    jf_api_key: null,
-  };
-
-  async function loadSettings() {
-    try {
-      const resp = await fetch('/api/settings');
-      if (!resp.ok) throw new Error(`GET failed: ${resp.status}`);
-      const data = await resp.json();
-      if (fields.hour_format) fields.hour_format.value = data.hour_format || '24';
-      if (fields.language) fields.language.value = data.language || 'en';
-      if (fields.jf_host) fields.jf_host.value = data.jf_host || '';
-      if (fields.jf_port) fields.jf_port.value = data.jf_port || '';
-      if (fields.jf_api_key) {
-        if (typeof data.jf_api_key === 'string' && data.jf_api_key.length > 0) {
-          fields.jf_api_key.value = API_MASK;
-          fields.jf_api_key.disabled = true;
-          isApiMasked = true;
-          if (clearBtn) clearBtn.hidden = false;
-        } else {
-          fields.jf_api_key.value = '';
-          fields.jf_api_key.disabled = false;
-          isApiMasked = false;
-          if (clearBtn) clearBtn.hidden = true;
-        }
-      }
-
-      lastKnown.hour_format = fields.hour_format ? fields.hour_format.value : null;
-      lastKnown.language = fields.language ? fields.language.value : null;
-      lastKnown.jf_host = fields.jf_host ? fields.jf_host.value.trim() : null;
-      lastKnown.jf_port = fields.jf_port ? fields.jf_port.value.trim() : null;
-      lastKnown.jf_api_key = typeof data.jf_api_key === 'string' && data.jf_api_key.length > 0
-        ? data.jf_api_key
-        : null;
-
-    } catch (err) {
-      showToast('Failed to load settings', 'error');
-      console.error(err);
-    }
-  }
-
-  let saveTimer = null;
-  function scheduleSave(payload) {
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => saveSettings(payload), 200);
-  }
-
-  async function saveSettings(payload) {
-    try {
-      if ('jf_api_key' in payload) {
-        const v = payload.jf_api_key || '';
-        if (v === API_MASK) {
-          delete payload.jf_api_key;
-        }
-      }
-      const resp = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!resp.ok) throw new Error(`PUT failed: ${resp.status}`);
-      const updated = await resp.json();
-
-      if (fields.hour_format && 'hour_format' in updated) {
-        fields.hour_format.value = updated.hour_format;
-        lastKnown.hour_format = updated.hour_format;
-      }
-      if (fields.language && 'language' in updated) {
-        fields.language.value = updated.language;
-        lastKnown.language = updated.language;
-      }
-      if (fields.jf_host && 'jf_host' in updated) {
-        fields.jf_host.value = updated.jf_host || '';
-        lastKnown.jf_host = (updated.jf_host || '').trim();
-      }
-      if (fields.jf_port && 'jf_port' in updated) {
-        fields.jf_port.value = updated.jf_port || '';
-        lastKnown.jf_port = (updated.jf_port || '').trim();
-      }
-      if (fields.jf_api_key && 'jf_api_key' in updated) {
-        if (typeof updated.jf_api_key === 'string' && updated.jf_api_key.length > 0) {
-          fields.jf_api_key.value = API_MASK;
-          fields.jf_api_key.disabled = true;
-          isApiMasked = true;
-          lastKnown.jf_api_key = updated.jf_api_key;
-          if (clearBtn) clearBtn.hidden = false;
-        } else {
-          fields.jf_api_key.value = '';
-          fields.jf_api_key.disabled = false;
-          isApiMasked = false;
-          lastKnown.jf_api_key = null;
-          if (clearBtn) clearBtn.hidden = true;
-        }
-      }
-      showToast('Settings saved', 'success');
-    } catch (err) {
-      showToast('Failed to save settings', 'error');
-      console.error(err);
-    }
-  }
-
-  function bindAutosave() {
-    if (fields.hour_format) {
-      fields.hour_format.addEventListener('blur', () => {
-        const v = fields.hour_format.value;
-        if (v !== lastKnown.hour_format) {
-          scheduleSave({ hour_format: v });
-        }
-      });
-      fields.hour_format.addEventListener('change', () => {
-        const v = fields.hour_format.value;
-        if (v !== lastKnown.hour_format) {
-          scheduleSave({ hour_format: v });
-        }
-      });
-    }
-    if (fields.language) {
-      fields.language.addEventListener('blur', () => {
-        const v = fields.language.value;
-        if (v !== lastKnown.language) {
-          scheduleSave({ language: v });
-        }
-      });
-      fields.language.addEventListener('change', () => {
-        const v = fields.language.value;
-        if (v !== lastKnown.language) {
-          scheduleSave({ language: v });
-        }
-      });
-    }
-    if (fields.jf_host) {
-      fields.jf_host.addEventListener('blur', () => {
-        const v = fields.jf_host.value.trim();
-        if (v !== lastKnown.jf_host) {
-          scheduleSave({ jf_host: v });
-        }
-      });
-    }
-    if (fields.jf_port) {
-      fields.jf_port.addEventListener('blur', () => {
-        const v = fields.jf_port.value.trim();
-        if (v !== lastKnown.jf_port) {
-          scheduleSave({ jf_port: v });
-        }
-      });
-    }
-    if (fields.jf_api_key) {
-      fields.jf_api_key.addEventListener('blur', () => {
-        if (isApiMasked || fields.jf_api_key.disabled) return;
-        const val = fields.jf_api_key.value.trim();
-        if (val && val !== API_MASK && val !== (lastKnown.jf_api_key || '')) {
-          scheduleSave({ jf_api_key: val });
-        }
-      });
-    }
-    if (clearBtn) {
-      clearBtn.addEventListener('click', async () => {
-        try {
-          await saveSettings({ jf_api_key: '' });
-          showToast('API key cleared', 'success');
-        } catch (e) {
-          showToast('Failed to clear API key', 'error');
-        } finally {
-          fields.jf_api_key.value = '';
-          fields.jf_api_key.disabled = false;
-          isApiMasked = false;
-          clearBtn.hidden = true;
-          fields.jf_api_key.focus();
-        }
-      });
-    }
-  }
-
   function activate(id) {
     tabs.forEach(t => {
       const isActive = t.getAttribute('href') === `#${id}`;
@@ -236,28 +47,12 @@
 
   window.addEventListener('hashchange', fromHash);
   fromHash();
-
-  loadSettings().then(bindAutosave);
 })();
 
 (function () {
-  const buttons = Array.from(document.querySelectorAll('#jellyfin .form-actions .btn'));
-  if (buttons.length === 0) return;
-
-  const testConnectionBtn = buttons[0] || null;
-  const testSystemInfoBtn = buttons[1] || null;
-  const pullDataBtn = buttons[2] || null;
-
-  function showToast(message, kind = "success") {
-    const toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) return;
-    const el = document.createElement('div');
-    el.className = `toast ${kind}`;
-    el.setAttribute('role', 'status');
-    el.textContent = message;
-    toastContainer.appendChild(el);
-    setTimeout(() => el.remove(), 3000);
-  }
+  const testConnectionBtn = document.getElementById('jf-test-connection-btn');
+  const testSystemInfoBtn = document.getElementById('jf-test-sysinfo-btn');
+  const pullDataBtn = document.getElementById('jf-sync-data-btn');
 
   if (testConnectionBtn) {
     testConnectionBtn.addEventListener('click', async () => {
@@ -475,4 +270,286 @@
     });
   }
   window.addEventListener('hashchange', loadIfVisible);
+})();
+
+(function () {
+  // Jellyfin server management: Add/Remove server with state detection
+  const noServerDiv = document.getElementById('jf-no-server');
+  const serverAddedDiv = document.getElementById('jf-server-added');
+  const syncProgressDiv = document.getElementById('jf-sync-progress');
+  const addServerBtn = document.getElementById('jf-add-server-btn');
+  const removeServerBtn = document.getElementById('jf-remove-server-btn');
+  const modalBackdrop = document.getElementById('jf-modal-backdrop');
+  const modal = document.getElementById('jf-add-server-modal');
+  const modalForm = document.getElementById('jf-modal-form');
+  const modalCloseBtn = document.getElementById('jf-modal-close');
+  const modalTestBtn = document.getElementById('jf-modal-test-btn');
+  const modalHostInput = document.getElementById('jf-modal-host');
+  const modalPortInput = document.getElementById('jf-modal-port');
+  const modalKeyInput = document.getElementById('jf-modal-api-key');
+  const serverHostDisplay = document.getElementById(
+    'jf-server-host-display'
+  );
+  const serverKeyDisplay = document.getElementById(
+    'jf-server-key-display'
+  );
+  const syncBar = document.getElementById('jf-sync-bar');
+  const syncPercent = document.getElementById('jf-sync-percent');
+
+  function showToast(message, kind = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = `toast ${kind}`;
+    el.setAttribute('role', 'status');
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 5000);
+  }
+
+  function openModal() {
+    modal.hidden = false;
+    modalBackdrop.hidden = false;
+    modalHostInput.focus();
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    modalBackdrop.hidden = true;
+    modalForm.reset();
+  }
+
+  function updateServerState(hasServer) {
+    // Toggle visibility between no-server and server-added states
+    if (noServerDiv) noServerDiv.hidden = hasServer;
+    if (serverAddedDiv) serverAddedDiv.hidden = !hasServer;
+    if (syncProgressDiv) syncProgressDiv.hidden = true;
+  }
+
+  function showSyncProgress(show = true) {
+    if (syncProgressDiv) {
+      syncProgressDiv.hidden = !show;
+    }
+  }
+
+  function updateSyncProgress(current, total) {
+    // Calculate and display progress percentage
+    const percent = total > 0
+      ? Math.round((current / total) * 100)
+      : 0;
+    if (syncBar) syncBar.style.width = `${percent}%`;
+    if (syncPercent) {
+      syncPercent.textContent = `${percent}%`;
+    }
+  }
+
+  function displayServer(host, port, apiKey) {
+    // Display server connection info (redacted API key)
+    if (serverHostDisplay) {
+      serverHostDisplay.textContent = `${host}:${port}`;
+    }
+    if (serverKeyDisplay) {
+      const redacted = apiKey
+        ? `API Key: ${apiKey.substring(0, 3)}**************************`
+        : 'API Key: *****************************';
+      serverKeyDisplay.textContent = redacted;
+    }
+  }
+
+  async function checkServerState() {
+    // Query settings API to determine current server state
+    try {
+      const resp = await fetch('/api/settings');
+      if (!resp.ok) return;
+      const data = await resp.json();
+
+      const hasServer = !!(
+        data.jf_host && data.jf_port && data.jf_api_key
+      );
+
+      if (hasServer) {
+        updateServerState(true);
+        displayServer(
+          data.jf_host,
+          data.jf_port,
+          data.jf_api_key
+        );
+        // Check if initial sync is in progress
+        checkSyncProgress();
+      } else {
+        updateServerState(false);
+      }
+    } catch (err) {
+      console.error('Failed to check server state:', err);
+    }
+  }
+
+  async function checkSyncProgress() {
+    // Poll for initial activity log sync progress
+    try {
+      const resp = await fetch(
+        '/api/analytics/server/sync-progress'
+      );
+      if (!resp.ok) return;
+      const data = await resp.json();
+
+      if (data.syncing) {
+        showSyncProgress(true);
+        updateSyncProgress(
+          data.processed_events || 0,
+          data.total_events || 1
+        );
+        // Poll again in 2 seconds
+        setTimeout(checkSyncProgress, 2000);
+      } else {
+        showSyncProgress(false);
+      }
+    } catch (err) {
+      // Endpoint may not exist yet; suppress error
+    }
+  }
+
+  if (addServerBtn) {
+    addServerBtn.addEventListener('click', openModal);
+  }
+
+  if (modalCloseBtn) {
+    modalCloseBtn.addEventListener('click', closeModal);
+  }
+
+  if (modalBackdrop) {
+    modalBackdrop.addEventListener('click', closeModal);
+  }
+
+  if (modalForm) {
+    modalForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const host = (modalHostInput.value || '').trim();
+      const port = (modalPortInput.value || '').trim();
+      const apiKey = (modalKeyInput.value || '').trim();
+
+      if (!host || !port || !apiKey) {
+        showToast('Please fill in all fields', 'error');
+        return;
+      }
+
+      try {
+        // Save server settings
+        const resp = await fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jf_host: host,
+            jf_port: port,
+            jf_api_key: apiKey,
+          }),
+        });
+
+        if (!resp.ok) {
+          showToast('Failed to save server settings', 'error');
+          return;
+        }
+
+        closeModal();
+        showToast('Server added successfully', 'success');
+
+        await checkServerState();
+      } catch (err) {
+        showToast('Error adding server', 'error');
+        console.error(err);
+      }
+    });
+  }
+
+  if (modalTestBtn) {
+    modalTestBtn.addEventListener('click', async () => {
+      const host = (modalHostInput.value || '').trim();
+      const port = (modalPortInput.value || '').trim();
+      const apiKey = (modalKeyInput.value || '').trim();
+
+      if (!host || !port || !apiKey) {
+        showToast('Please fill in all fields', 'error');
+        return;
+      }
+
+      const originalText = modalTestBtn.textContent;
+      modalTestBtn.disabled = true;
+      modalTestBtn.textContent = 'Testing...';
+
+      try {
+        const resp = await fetch(
+          '/api/test-connection-with-credentials',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              jf_host: host,
+              jf_port: port,
+              jf_api_key: apiKey,
+            }),
+          }
+        );
+        const result = await resp.json();
+
+        if (result.ok) {
+          showToast('Connection successful!', 'success');
+        } else {
+          const msg = (
+            result.message || 'Connection failed'
+          );
+          showToast(msg, 'error');
+        }
+      } catch (err) {
+        showToast('Failed to test connection', 'error');
+        console.error(err);
+      } finally {
+        modalTestBtn.textContent = originalText;
+        modalTestBtn.disabled = false;
+      }
+    });
+  }
+
+  if (removeServerBtn) {
+    removeServerBtn.addEventListener('click', async () => {
+      if (!confirm('Remove Jellyfin server configuration?')) {
+        return;
+      }
+
+      try {
+        const resp = await fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jf_host: '',
+            jf_port: '',
+            jf_api_key: '',
+          }),
+        });
+
+        if (!resp.ok) {
+          showToast('Failed to remove server', 'error');
+          return;
+        }
+
+        showToast('Server removed', 'success');
+        
+        updateServerState(false);
+        showSyncProgress(false);
+        
+        const libList = document.getElementById('libraries-list');
+        const libEmpty = document.getElementById('libraries-empty');
+        if (libList) libList.innerHTML = '';
+        if (libEmpty) libEmpty.hidden = false;
+        
+      } catch (err) {
+        showToast('Error removing server', 'error');
+        console.error(err);
+      }
+    });
+  }
+
+  checkServerState();
 })();

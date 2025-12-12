@@ -203,19 +203,6 @@ class JellyfinClient:
                 )
             }
         return {"ok": False, "item_count": 0}
-
-    def get_playback_activity(
-        self,
-        start_timestamp: Optional[int] = None,
-        limit: int = 1000
-    ) -> Dict[str, Any]:
-        """
-        Returns playback activity from Jellyfin activity log.
-        """
-        path = f"/System/ActivityLog/Entries?Limit={limit}"
-        if start_timestamp:
-            path += f"&MinDate={start_timestamp}"
-        return self._get(path)
     
     def get_activity_log(
         self,

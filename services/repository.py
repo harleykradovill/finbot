@@ -342,11 +342,18 @@ class Repository:
         Retrieve the Unix timestamp of the last successful
         activity log sync.
         """
-        from services.settings_store import SettingsService
+        from services.settings_store import Settings
+        
         try:
-            # This should come from the app context
-            # For now, return None to trigger initial full pull
-            return None
+            with self._session() as session:
+                settings = (
+                    session.query(Settings)
+                    .filter_by(id=1)
+                    .first()
+                )
+                if settings:
+                    return settings.last_activity_log_sync
+                return None
         except Exception:
             return None
 
@@ -358,7 +365,21 @@ class Repository:
         Update the timestamp of the last successful activity
         log sync.
         """
-        pass
+        from services.settings_store import Settings
+        
+        try:
+            with self._session() as session:
+                settings = (
+                    session.query(Settings)
+                    .filter_by(id=1)
+                    .first()
+                )
+                if settings:
+                    settings.last_activity_log_sync = timestamp
+                    session.merge(settings)
+                    session.commit()
+        except Exception:
+            pass
 
     def is_initial_activity_log_sync_needed(
         self
@@ -368,6 +389,33 @@ class Repository:
         """
         last_sync = self.get_last_activity_log_sync()
         return last_sync is None
+    
+    def get_latest_sync_task(
+        self
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve the most recent sync task log entry.
+        """
+        with self._session() as session:
+            task = (
+                session.query(TaskLog)
+                .filter(TaskLog.type == "sync")
+                .order_by(TaskLog.started_at.desc())
+                .first()
+            )
+            if task:
+                return {
+                    "id": task.id,
+                    "name": task.name,
+                    "type": task.type,
+                    "execution_type": task.execution_type,
+                    "result": task.result,
+                    "started_at": task.started_at,
+                    "finished_at": task.finished_at,
+                    "duration_ms": task.duration_ms,
+                    "log_json": task.log_json,
+                }
+            return None
 
     # Playback Activity
 
@@ -382,19 +430,37 @@ class Repository:
 
         count = 0
         with self._session() as session:
-            for data in event_dicts:
-                event = PlaybackActivity(
-                    user_id=data.get("user_id", ""),
-                    item_id=data.get("item_id", ""),
-                    device_name=data.get("device_name"),
-                    client=data.get("client"),
-                    remote_endpoint=data.get("remote_endpoint"),
-                    activity_at=data.get("activity_at", int(time.time())),
-                    duration_s=data.get("duration_s", 0),
-                    username_denorm=data.get("username_denorm"),
+            for event in event_dicts:
+                activity_log_id = event.get("activity_log_id")
+                user_id = event.get("user_id")
+                item_id = event.get("item_id")
+
+                if not activity_log_id or not user_id or not item_id:
+                    continue
+
+                existing = (
+                    session.query(PlaybackActivity)
+                    .filter_by(activity_log_id=activity_log_id)
+                    .first()
                 )
-                session.add(event)
+                if existing:
+                    # Already synced, skip
+                    continue
+
+                activity = PlaybackActivity(
+                    activity_log_id=activity_log_id,
+                    user_id=user_id,
+                    item_id=item_id,
+                    event_name=event.get("event_name"),
+                    event_overview=event.get("event_overview"),
+                    activity_at=event.get("activity_at"),
+                    username_denorm=event.get("username_denorm"),
+                )
+
+                session.add(activity)
                 count += 1
+
+            session.commit()
 
         return count
 

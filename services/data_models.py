@@ -151,31 +151,37 @@ class PlaybackActivity(Base):
     __tablename__ = "playback_activity"
 
     id = Column(Integer, primary_key=True)
+    activity_log_id = Column(
+        Integer,
+        nullable=False,
+        unique=True
+    )
     user_id = Column(String(128), nullable=False)
     item_id = Column(String(128), nullable=False)
-    device_name = Column(String(255), nullable=True)
-    client = Column(String(128), nullable=True)
-    remote_endpoint = Column(String(255), nullable=True)
+    event_name = Column(String(512), nullable=True)
+    event_overview = Column(Text, nullable=True)
     activity_at = Column(BigInteger, nullable=False)
-    duration_s = Column(Integer, default=0)
     username_denorm = Column(String(255), nullable=True)
 
     __table_args__ = (
+        Index("idx_playback_activity_log_id", "activity_log_id"),
         Index("idx_playback_user_id", "user_id"),
         Index("idx_playback_item_id", "item_id"),
         Index("idx_playback_activity_at", "activity_at"),
     )
 
     def to_dict(self) -> Dict[str, Any]:
+        """
+        Serialize to dictionary for API responses.
+        """
         return {
             "id": self.id,
+            "activity_log_id": self.activity_log_id,
             "user_id": self.user_id,
             "item_id": self.item_id,
-            "device_name": self.device_name,
-            "client": self.client,
-            "remote_endpoint": self.remote_endpoint,
+            "event_name": self.event_name,
+            "event_overview": self.event_overview,
             "activity_at": self.activity_at,
-            "duration_s": self.duration_s,
             "username_denorm": self.username_denorm,
         }
 

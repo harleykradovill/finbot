@@ -74,28 +74,93 @@
           <div class="settings-placeholder">
             <h2 class="placeholder-title">Jellyfin</h2>
           </div>
-          <form class="settings-form" aria-label="Jellyfin Settings">
-            <div class="form-field">
-              <label for="jf-host">Host</label>
-              <input id="jf-host" name="jf_host" type="text" inputmode="url" placeholder="127.0.0.1">
-            </div>
-            <div class="form-field">
-              <label for="jf-port">Port</label>
-              <input id="jf-port" name="jf_port" type="text" inputmode="numeric" placeholder="8096">
-            </div>
-            <div class="form-field" style="grid-column: 1 / -1;">
-              <label for="jf-api-key">API Key</label>
-              <div class="input-with-action">
-                <input id="jf-api-key" name="jf_api_key" type="text" autocomplete="off" placeholder="Paste your API key" aria-describedby="jf-api-help">
-                <button type="button" id="jf-api-clear" class="icon-btn" aria-label="Clear API key" title="Clear API key" hidden>x</button>
+
+          <div id="jf-no-server" class="jf-server-container" aria-label="Add Jellyfin Server">
+            <p>You do not have a server added yet.</p>
+            <button id="jf-add-server-btn" class="btn" type="button">
+              Add Server
+            </button>
+          </div>
+
+          <div id="jf-server-added" class="jf-server-container" hidden>
+            <div class="jf-server-info">
+              <div class="jf-server-details">
+                <div class="jf-server-host" id="jf-server-host-display">
+                  127.0.0.1:8096
+                </div>
+                <div class="jf-server-key" id="jf-server-key-display">
+                  API Key: ••••••••••••••••
+                </div>
               </div>
-              <div class="form-actions">
-                <button type="button" class="btn">Test Connection</button>
-                <button type="button" class="btn">Test SystemInfo</button>
-                <button type="button" class="btn">Pull Data</button>
+              <button id="jf-remove-server-btn" class="btn btn-danger" type="button">
+                Remove Server
+              </button>
+            </div>
+
+            <div id="jf-sync-progress" class="jf-sync-progress" hidden>
+              <div class="jf-sync-info">
+                <p>Initial Activity Log Sync in Progress</p>
+                <div class="progress-bar">
+                  <div id="jf-sync-bar" class="progress-fill" style="width: 0%"></div>
+                </div>
+                <p id="jf-sync-percent">0%</p>
               </div>
             </div>
-          </form>
+          </div>
+
+          <div class="jf-debug-actions" aria-label="Jellyfin Debug Tools">
+            <button type="button" class="btn" id="jf-test-connection-btn">
+              Test Connection
+            </button>
+            <button type="button" class="btn" id="jf-test-sysinfo-btn">
+              Test SystemInfo
+            </button>
+            <button type="button" class="btn" id="jf-sync-data-btn">
+              Sync Data
+            </button>
+          </div>
+        </div>
+
+        <div id="jf-modal-backdrop" class="modal-backdrop" hidden aria-hidden="true"></div>
+        <div id="jf-add-server-modal" class="modal" hidden role="dialog" 
+             aria-labelledby="jf-modal-title" aria-modal="true">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3 id="jf-modal-title">Add Jellyfin Server</h3>
+              <button id="jf-modal-close" class="icon-btn" aria-label="Close dialog">
+                ×
+              </button>
+            </div>
+
+            <form id="jf-modal-form" class="settings-form">
+              <div class="form-field" style="grid-column: 1 / -1;">
+                <label for="jf-modal-host">Host</label>
+                <input id="jf-modal-host" type="text" inputmode="url" 
+                       placeholder="127.0.0.1 or example.com" required>
+              </div>
+
+              <div class="form-field" style="grid-column: 1 / -1;">
+                <label for="jf-modal-port">Port</label>
+                <input id="jf-modal-port" type="text" inputmode="numeric" 
+                       placeholder="8096" required>
+              </div>
+
+              <div class="form-field" style="grid-column: 1 / -1;">
+                <label for="jf-modal-api-key">API Key</label>
+                <input id="jf-modal-api-key" type="text" autocomplete="off" 
+                       placeholder="Paste your API key" required>
+              </div>
+
+              <div class="modal-actions" style="grid-column: 1 / -1;">
+                <button type="button" id="jf-modal-test-btn" class="btn">
+                  Test Connection
+                </button>
+                <button type="submit" id="jf-modal-add-btn" class="btn">
+                  Add Server
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
 
         <div class="settings-content" role="tabpanel" id="libraries" aria-labelledby="libraries-tab" hidden>

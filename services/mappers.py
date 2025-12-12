@@ -128,23 +128,24 @@ def map_playback_event(
     """
     user_id = (jf_event.get("UserId") or "").strip()
     item_id = (jf_event.get("ItemId") or "").strip()
-    
+
     if not user_id or not item_id:
         return None
-    
-    session_info = jf_event.get("Session", {})
-    device_name = session_info.get("DeviceName")
-    client = session_info.get("Client")
-    remote_endpoint = session_info.get("RemoteEndPoint")
-    
-    play_info = jf_event.get("PlaybackInfo", {})
-    position_ticks = play_info.get("PositionTicks", 0)
-    duration_s = int(position_ticks / 10_000_000) if position_ticks else 0
-    
-    activity_timestamp = jf_event.get("Timestamp")
+
+    activity_log_id = jf_event.get("Id")
+
+    event_name = (jf_event.get("Name") or "").strip()
+    event_overview = (
+        jf_event.get("ShortOverview")
+        or jf_event.get("Overview")
+        or ""
+    ).strip()
+
+    activity_timestamp = jf_event.get("Date")
     if activity_timestamp:
         from datetime import datetime
         try:
+            # Handle ISO 8601 format with Z suffix
             dt = datetime.fromisoformat(
                 activity_timestamp.replace("Z", "+00:00")
             )
@@ -155,15 +156,14 @@ def map_playback_event(
     else:
         import time
         activity_at = int(time.time())
-    
+
     return {
+        "activity_log_id": activity_log_id,
         "user_id": user_id,
         "item_id": item_id,
-        "device_name": device_name,
-        "client": client,
-        "remote_endpoint": remote_endpoint,
+        "event_name": event_name,
+        "event_overview": event_overview,
         "activity_at": activity_at,
-        "duration_s": duration_s,
         "username_denorm": username,
     }
 

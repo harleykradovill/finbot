@@ -24,6 +24,7 @@ class Settings(Base):
     jf_host = Column(String(255), default="127.0.0.1")
     jf_port = Column(String(8), default="8096")
     jf_api_key_encrypted = Column(String(4096), nullable=True)
+    last_activity_log_sync = Column(Integer, nullable=True)
 
     def to_dict(self, fernet: Optional[Fernet] = None) -> Dict[str, Any]:
         """
@@ -33,7 +34,9 @@ class Settings(Base):
         if fernet and self.jf_api_key_encrypted:
             try:
                 api_key_plain = (
-                    fernet.decrypt(self.jf_api_key_encrypted.encode("utf-8"))
+                    fernet.decrypt(
+                        self.jf_api_key_encrypted.encode("utf-8")
+                    )
                     .decode("utf-8")
                 )
             except InvalidToken:
