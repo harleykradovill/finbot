@@ -5,8 +5,7 @@
 !.github/workflows/
 borealis_data.db
 borealis.db
-api/jellyfin-api.js
-/api/jellyfin-openapi-stable.json
+api
 
 # Environment
 *.env

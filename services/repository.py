@@ -380,15 +380,6 @@ class Repository:
                     session.commit()
         except Exception:
             pass
-
-    def is_initial_activity_log_sync_needed(
-        self
-    ) -> bool:
-        """
-        Check if initial full activity log pull is needed.
-        """
-        last_sync = self.get_last_activity_log_sync()
-        return last_sync is None
     
     def get_latest_sync_task(
         self
