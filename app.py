@@ -362,6 +362,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         return jsonify(result), 200
 
     @app.get("/api/jellyfin/libraries")
+    @app.get("/api/jellyfin/libraries")
     def api_jf_libraries() -> Response:
         """
         Fetches libraries with item counts and upserts to repository.
@@ -370,37 +371,39 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
 
         data = result.get("data")
         if result and result.get("ok"):
+            # Normalize Items shape
             if isinstance(data, dict) and isinstance(
                 data.get("Items"), list
             ):
                 flat = data["Items"]
-                for lib in flat:
-                    lib_id = lib.get("Id")
-                    if lib_id:
-                        stats = jf.library_stats(lib_id)
-                        if stats.get("ok"):
-                            lib["ItemCount"] = stats.get("item_count", 0)
-
-                result["data"] = flat
-                try:
-                    from services.mappers import map_libraries
-                    mapped = map_libraries(flat)
-                    repo.upsert_libraries(mapped)
-                except Exception:
-                    pass
             elif isinstance(data, list):
-                for lib in data:
-                    lib_id = lib.get("Id")
-                    if lib_id:
-                        stats = jf.library_stats(lib_id)
-                        if stats.get("ok"):
-                            lib["ItemCount"] = stats.get("item_count", 0)
-                try:
-                    from services.mappers import map_libraries
-                    mapped = map_libraries(data)
-                    repo.upsert_libraries(mapped)
-                except Exception:
-                    pass
+                flat = data
+            else:
+                flat = []
+
+            for lib in flat:
+                lib_id = lib.get("Id")
+                if lib_id:
+                    stats = jf.library_stats(lib_id)
+                    if stats.get("ok"):
+                        lib["ItemCount"] = stats.get("item_count", 0)
+
+            def _is_media_library(lib: dict) -> bool:
+                t = (lib.get("CollectionType") or lib.get("Type") or "")
+                t_norm = str(t).strip().lower()
+                if not t_norm:
+                    return False
+                return any(k in t_norm for k in ("movies", "tvshows"))
+
+            filtered = [l for l in flat if _is_media_library(l)]
+            result["data"] = filtered
+
+            try:
+                from services.mappers import map_libraries
+                mapped = map_libraries(filtered)
+                repo.upsert_libraries(mapped)
+            except Exception:
+                pass
 
         return jsonify(result), 200
 
