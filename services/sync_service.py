@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 import json
 import traceback
 from dataclasses import dataclass
@@ -335,124 +336,106 @@ class SyncService:
 
             return result
 
+    def _ts_to_iso(self, ts: int) -> str:
+        """
+        Convert epoch seconds to Jellyfin-compatible ISO UTC string.
+        """
+        return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
     def sync_activity_log_incremental(
-        self,
-        minutes_back: int = 30
+        self, minutes_back: int = 30, page_limit: int = 100
     ) -> SyncResult:
         """
         Perform incremental activity log sync for recent entries.
         """
-        from datetime import datetime, timedelta
-
         start_time = time.time()
-        errors: List[str] = []
-        events_count = 0
-
         task_id = self.repository.create_task_log(
-            name="Activity Log Sync (Incremental)",
+            name="Activity Log Incremental",
             task_type="sync",
             execution_type="incremental"
         )
 
+        processed = 0
+        errors: List[str] = []
+        latest_event_ts: Optional[int] = None
+
         try:
-            # Calculate minDate for API query
-            minutes_ago = datetime.utcnow() - timedelta(
-                minutes=minutes_back
-            )
-            min_date = minutes_ago.isoformat() + "Z"
+            last = self.repository.get_last_activity_log_sync()
+            if last:
+                min_ts = int(last)
+            else:
+                min_ts = int(time.time()) - (minutes_back * 60)
 
-            # Build user lookup
-            users = self.repository.list_users(include_archived=True)
-            user_lookup: Dict[str, str] = {
-                u["jellyfin_id"]: u["name"] for u in users
-            }
+            min_date = self._ts_to_iso(min_ts)
 
-            # Fetch recent activity log with date filter
-            activity_result = (
-                self.jellyfin_client.get_activity_log(
-                    start_index=0,
-                    limit=5000,
+            start_index = 0
+            while True:
+                resp = self.jellyfin_client.get_activity_log(
+                    start_index=start_index,
+                    limit=page_limit,
                     min_date=min_date,
                     has_user_id=True
                 )
-            )
 
-            if not activity_result.get("ok"):
-                error_msg = (
-                    f"Failed to fetch recent activity log: "
-                    f"{activity_result.get('message')}"
-                )
-                errors.append(error_msg)
-            else:
-                data = activity_result.get("data", {})
+                if not resp.get("ok"):
+                    errors.append(resp.get("message", "unknown error"))
+                    break
+
+                data = resp.get("data") or []
                 if isinstance(data, dict):
-                    items = data.get("Items", [])
+                    page = data.get("Items", [])
+                else:
+                    page = data
 
-                    # Filter for playback events only
-                    from services.mappers import map_playback_events
-                    playback_events = [
-                        item for item in items
-                        if item.get("Type") == "VideoPlaybackStopped"
-                    ]
+                if not isinstance(page, list) or not page:
+                    break
 
-                    if playback_events:
-                        mapped_events = map_playback_events(
-                            playback_events,
-                            user_lookup=user_lookup
-                        )
-                        events_count = (
-                            self.repository.insert_playback_events(
-                                mapped_events
-                            )
-                        )
+                from services.mappers import map_playback_events
+                mapped = map_playback_events(page, user_lookup=None)
 
-            # Refresh stats after inserting events
-            if events_count > 0:
-                self.repository.refresh_play_stats()
+                for m in mapped:
+                    ts = m.get("activity_at")
+                    if isinstance(ts, int):
+                        if latest_event_ts is None or ts > latest_event_ts:
+                            latest_event_ts = ts
 
-            # Update last sync timestamp
-            now = int(time.time())
-            self.repository.set_last_activity_log_sync(now)
+                inserted = self.repository.insert_playback_events(mapped)
+                processed += inserted
 
-            duration_ms = int((time.time() - start_time) * 1000)
-            result = SyncResult(
-                success=len(errors) == 0,
-                duration_ms=duration_ms,
-                users_synced=0,
-                libraries_synced=0,
-                items_synced=events_count,
-                errors=errors,
-            )
+                if len(page) < page_limit:
+                    break
+                start_index += len(page)
+
+            if processed > 0 and latest_event_ts:
+                advance_ts = int(latest_event_ts)
+                try:
+                    self.repository.set_last_activity_log_sync(advance_ts)
+                except Exception:
+                    pass
 
             self.repository.complete_task_log(
                 task_id=task_id,
-                result="SUCCESS" if result.success else "FAILED",
-                log_data=result.to_dict(),
+                result="SUCCESS" if not errors else "PARTIAL",
+                log_data={
+                    "items_synced": processed,
+                    "total_events": processed,
+                    "duration_ms": int((time.time() - start_time) * 1000),
+                    "errors": errors,
+                    "min_date_used": min_date,
+                    "advanced_to": latest_event_ts if processed > 0 else None,
+                },
             )
 
-            return result
+            return SyncResult(success=(not errors), duration_ms=int((time.time() - start_time) * 1000),
+                              users_synced=0, libraries_synced=0, items_synced=processed, errors=errors)
 
         except Exception as exc:
-            duration_ms = int((time.time() - start_time) * 1000)
-            error_msg = f"Unexpected error: {str(exc)}"
-            errors.append(error_msg)
-
-            result = SyncResult(
-                success=False,
-                duration_ms=duration_ms,
-                users_synced=0,
-                libraries_synced=0,
-                items_synced=events_count,
-                errors=errors,
-            )
-
             self.repository.complete_task_log(
                 task_id=task_id,
                 result="FAILED",
-                log_data=result.to_dict(),
+                log_data={"message": str(exc)}
             )
-
-            return result
+            return SyncResult(success=False, duration_ms=0, users_synced=0, libraries_synced=0, items_synced=0, errors=[str(exc)])
         
     def sync_initial(self) -> SyncResult:
         """
