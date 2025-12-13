@@ -44,7 +44,7 @@ class SyncService:
     jellyfin_client: JellyfinClient
     repository: Repository
     
-    def sync_full(self) -> SyncResult:
+    def sync_full(self, auto_track: bool = False) -> SyncResult:
         """
         Perform a full sync: users → libraries → items → reconciliation.
         """
@@ -107,6 +107,15 @@ class SyncService:
                 libraries_count = self.repository.upsert_libraries(
                     mapped_libs
                 )
+
+                if auto_track and mapped_libs:
+                    for lib in mapped_libs:
+                        jf_id = lib.get("jellyfin_id")
+                        if jf_id:
+                            try:
+                                self.repository.set_library_tracked(jf_id, True)
+                            except Exception:
+                                pass
                 
                 # Archive libraries not in current list
                 active_lib_ids = [
@@ -462,7 +471,7 @@ class SyncService:
 
         try:
             # Step 1: Sync users, libraries, and items
-            full_result = self.sync_full()
+            full_result = self.sync_full(auto_track=True)
             if not full_result.success and full_result.errors:
                 errors.extend(full_result.errors)
 
