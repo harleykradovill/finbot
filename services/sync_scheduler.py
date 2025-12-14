@@ -17,16 +17,16 @@ class SyncScheduler:
     """
     Background thread that runs sync operations on an interval.
     
-    Handles both initial full activity log pulls and periodic
-    incremental syncs for recent playback activity.
+    Behavior:
+    - Every interval: run a lightweight full sync (users/libraries/items).
+    - Only run incremental activity-log sync if a last-activity marker exists.
     """
 
-    sync_service: SyncService
-    interval_seconds: int = 1800  # 30 minutes
-
-    def __post_init__(self) -> None:
+    def __init__(self, sync_service, interval_seconds: int = 120):
+        self.sync_service = sync_service
+        self.interval_seconds = int(interval_seconds)
+        self._thread = None
         self._running = False
-        self._thread: Optional[threading.Thread] = None
 
     def start(self) -> None:
         """Start the background sync thread."""
@@ -52,46 +52,49 @@ class SyncScheduler:
         print("SyncScheduler stopped")
 
     def _run_loop(self) -> None:
-        """
-        Main loop that runs sync operations periodically.
-        """
+        import time
+        import logging
+
+        logging.basicConfig(level=logging.INFO)
+
+        log = logging.getLogger(__name__)
+        log.debug("SyncScheduler loop starting (interval=%s)", self.interval_seconds)
+
+        # TODO (WATCHDOG):
+        # - A separate watchdog worker should be implemented to poll active sessions
+        #   frequently while Borealis is running. That worker will
+        #   update live session durations and increment play counts on session end.
         while self._running:
             try:
-                # Phase 1: Full sync of users, libraries, items
-                full_result = (
-                    self.sync_service.sync_full()
-                )
-                status = (
-                    "SUCCESS" if full_result.success
-                    else "FAILED"
-                )
-                print(
-                    f"Full sync {status}: "
-                    f"{full_result.users_synced} users, "
-                    f"{full_result.libraries_synced} libraries, "
-                    f"{full_result.items_synced} items "
-                    f"({full_result.duration_ms}ms)"
-                )
+                log.info("SyncScheduler: running periodic full sync (lightweight)")
+                try:
+                    self.sync_service.sync_full(auto_track=False)
+                except Exception as exc:
+                    log.exception("Periodic full sync failed: %s", exc)
+            except Exception:
+                log.exception("Unexpected error during periodic full sync")
 
-                # Phase 2: Incremental activity log sync
-                activity_result = (
-                    self.sync_service
-                    .sync_activity_log_incremental(
-                        minutes_back=30
+            try:
+                last_marker = None
+                try:
+                    last_marker = self.sync_service.repository.get_last_activity_log_sync()
+                except Exception:
+                    log.exception("Failed to read last activity log sync marker; skipping incremental")
+                    last_marker = None
+
+                if last_marker:
+                    log.info(
+                        "SyncScheduler: running incremental activity log sync (since marker=%s)",
+                        last_marker,
                     )
-                )
-                status = (
-                    "SUCCESS" if activity_result.success
-                    else "FAILED"
-                )
-                print(
-                    f"Incremental activity log sync {status}: "
-                    f"{activity_result.items_synced} events "
-                    f"({activity_result.duration_ms}ms)"
-                )
-
-            except Exception as exc:
-                print(f"Scheduled sync error: {exc}")
+                    try:
+                        self.sync_service.sync_activity_log_incremental()
+                    except Exception as exc:
+                        log.exception("Incremental activity log sync failed: %s", exc)
+                else:
+                    log.info("No last_activity_log_sync marker present; skipping incremental activity log sync")
+            except Exception:
+                log.exception("Unexpected error during incremental sync decision")
 
             for _ in range(self.interval_seconds):
                 if not self._running:

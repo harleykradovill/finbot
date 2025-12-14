@@ -65,7 +65,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
 
     sync_scheduler = SyncScheduler(
         sync_service=sync,
-        interval_seconds=1800  # 30 min
+        interval_seconds=120  # 120 sec
     )
 
     if not app.config.get("DEBUG"):
@@ -108,52 +108,49 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
     @app.put("/api/settings")
     def update_settings() -> Response:
         payload = request.get_json(silent=True) or {}
-        
-        # Get current settings before update
+
         current_settings = svc.get()
         had_server = (
             current_settings.get("jf_host")
             and current_settings.get("jf_port")
             and current_settings.get("jf_api_key")
         )
-        
-        # Update settings
+
         updated = svc.update(payload)
-        
-        # Check if server is being added for the first time
+
         has_server = (
             updated.get("jf_host")
             and updated.get("jf_port")
             and updated.get("jf_api_key")
         )
-        
-        # If adding server for first time, trigger initial sync
+
         if not had_server and has_server:
-            # Mark that we're starting initial sync to prevent 
-            # scheduler from also triggering it
-            svc.set_last_activity_log_sync(int(time.time()))
+            ts = int(time.time())
+            try:
+                svc.set_last_activity_log_sync(ts)
+            except Exception:
+                print("DEBUG: failed to persist last_activity_log_sync to settings DB before initial sync")
 
             try:
-                current = svc.get_last_activity_log_sync()
-                print(f"DEBUG: last_activity_log_sync persisted -> {current}")
+                repo.set_last_activity_log_sync(ts)
             except Exception:
-                print("DEBUG: failed to read back last_activity_log_sync")
-            
-            # Trigger sync_initial in background thread
+                print("DEBUG: failed to persist last_activity_log_sync to data DB before initial sync")
+
             import threading
+
             def run_initial_sync():
                 try:
                     sync.sync_initial()
-                except Exception as exc:
+                except Exception:
                     import traceback
                     traceback.print_exc()
-            
+
             sync_thread = threading.Thread(
                 target=run_initial_sync,
                 daemon=True
             )
             sync_thread.start()
-        
+
         return jsonify(updated), 200
     
     @app.teardown_appcontext

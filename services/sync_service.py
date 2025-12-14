@@ -13,6 +13,7 @@ from services.mappers import (
     map_users,
     map_libraries,
     map_items,
+    map_playback_events
 )
 
 
@@ -381,7 +382,31 @@ class SyncService:
         latest_event_ts: Optional[int] = None
 
         try:
-            last = self.repository.get_last_activity_log_sync()
+            try:
+                last = self.repository.get_last_activity_log_sync()
+            except Exception:
+                last = None
+
+            if not last:
+                duration_ms = int((time.time() - start_time) * 1000)
+                result = SyncResult(
+                    success=True,
+                    duration_ms=duration_ms,
+                    users_synced=0,
+                    libraries_synced=0,
+                    items_synced=0,
+                    errors=[]
+                )
+                try:
+                    self.repository.complete_task_log(
+                        task_id=task_id,
+                        result="SUCCESS",
+                        log_data={"skipped": True, "reason": "no_last_activity_marker"}
+                    )
+                except Exception:
+                    pass
+                return result
+
             if last:
                 min_ts = int(last)
             else:
@@ -397,58 +422,43 @@ class SyncService:
                     min_date=min_date,
                     has_user_id=True
                 )
-
                 if not resp.get("ok"):
-                    errors.append(resp.get("message", "unknown error"))
+                    errors.append(f"Failed to fetch activity log page at index {start_index}")
                     break
 
                 data = resp.get("data") or []
-                if isinstance(data, dict):
-                    page = data.get("Items", [])
-                else:
-                    page = data
+                if not isinstance(data, list):
+                    data = data.get("Items", []) if isinstance(data, dict) else []
 
-                if not isinstance(page, list) or not page:
+                if not data:
                     break
 
-                from services.mappers import map_playback_events
+                user_lookup = None
+                mapped = map_playback_events(data, user_lookup=user_lookup)
+                try:
+                    inserted = self.repository.insert_playback_events(mapped)
+                    processed += inserted
+                except Exception as exc:
+                    errors.append(f"Failed to insert events: {str(exc)}")
 
-                mapped = map_playback_events(page, user_lookup=None)
-
-                for m in mapped:
-                    ts = m.get("activity_at")
-                    if isinstance(ts, int):
+                for ev in mapped:
+                    ts = ev.get("activity_at")
+                    if ts:
                         if latest_event_ts is None or ts > latest_event_ts:
                             latest_event_ts = ts
 
-                inserted = self.repository.insert_playback_events(mapped)
-                processed += inserted
-
-                if len(page) < page_limit:
+                if len(data) < page_limit:
                     break
-                start_index += len(page)
+                start_index += len(data)
 
-            advance_ts = int(latest_event_ts) if latest_event_ts else int(time.time())
-            try:
-                self.repository.set_last_activity_log_sync(advance_ts)
-            except Exception:
-                errors.append("Failed to persist last_activity_log_sync")
+            if latest_event_ts:
+                try:
+                    self.repository.set_last_activity_log_sync(int(latest_event_ts))
+                except Exception:
+                    errors.append("Failed to persist last activity marker")
 
             duration_ms = int((time.time() - start_time) * 1000)
-            self.repository.complete_task_log(
-                task_id=task_id,
-                result="SUCCESS" if not errors else "PARTIAL",
-                log_data={
-                    "items_synced": processed,
-                    "total_events": processed,
-                    "duration_ms": duration_ms,
-                    "errors": errors,
-                    "min_date_used": min_date,
-                    "advanced_to": advance_ts,
-                },
-            )
-
-            return SyncResult(
+            result = SyncResult(
                 success=(len(errors) == 0),
                 duration_ms=duration_ms,
                 users_synced=0,
@@ -457,26 +467,34 @@ class SyncService:
                 errors=errors,
             )
 
-        except Exception as exc:
-            duration_ms = int((time.time() - start_time) * 1000)
-            try:
-                self.repository.set_last_activity_log_sync(int(time.time()))
-            except Exception:
-                pass
-
             self.repository.complete_task_log(
                 task_id=task_id,
-                result="FAILED",
-                log_data={"message": str(exc)}
+                result=("SUCCESS" if result.success else "FAILED"),
+                log_data=result.to_dict(),
             )
-            return SyncResult(
+
+            return result
+
+        except Exception as exc:
+            duration_ms = int((time.time() - start_time) * 1000)
+            errors.append(f"Unexpected error during incremental sync: {str(exc)}")
+            result = SyncResult(
                 success=False,
                 duration_ms=duration_ms,
                 users_synced=0,
                 libraries_synced=0,
                 items_synced=processed,
-                errors=[str(exc)],
+                errors=errors,
             )
+            try:
+                self.repository.complete_task_log(
+                    task_id=task_id,
+                    result="FAILED",
+                    log_data=result.to_dict(),
+                )
+            except Exception:
+                pass
+            return result
         
     def sync_initial(self) -> SyncResult:
         """
