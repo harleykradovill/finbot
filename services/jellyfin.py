@@ -9,6 +9,9 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
+import re
+import ipaddress
 
 from services.settings_store import SettingsService
 
@@ -22,17 +25,49 @@ class JellyfinClient:
         Read settings and normalize scheme/host.
         """
         s = self._settings.get()
-        host = (s.get("jf_host") or "").strip()
-        port = (s.get("jf_port") or "").strip()
+        raw_host = (s.get("jf_host") or "").strip()
+        raw_port = (s.get("jf_port") or "").strip()
         token = (s.get("jf_api_key") or "").strip()
         scheme = "http"
+        host = ""
+        port = ""
 
-        if host.startswith(("http://", "https://")):
-            if host.startswith("https://"):
-                scheme = "https"
-                host = host.removeprefix("https://")
-            else:
-                host = host.removeprefix("http://")
+        if not raw_host and not raw_port:
+            return scheme, host, port, token
+
+        parsed = urlparse(raw_host if "://" in raw_host else f"//{raw_host}", scheme="http")
+        candidate_host = parsed.hostname or ""
+        candidate_port_from_host = parsed.port
+
+        if raw_port:
+            port = raw_port
+        elif candidate_port_from_host:
+            port = str(candidate_port_from_host)
+
+        if parsed.scheme and parsed.scheme.lower() == "https":
+            scheme = "https"
+        elif raw_host.startswith("https://"):
+            scheme = "https"
+
+        host = candidate_host or raw_host
+
+        if ":" in host:
+            host = host.split(":", 1)[0]
+
+        host = host.strip().strip("/")
+
+        valid = False
+        if host:
+            try:
+                ipaddress.ip_address(host)
+                valid = True
+            except Exception:
+                HOSTNAME_RE = re.compile(r"^(?=.{1,255}$)([A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?)(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?)*$")
+                if HOSTNAME_RE.match(host):
+                    valid = True
+
+        if not valid:
+            return scheme, "", "", token
 
         return scheme, host, port, token
 
@@ -41,9 +76,20 @@ class JellyfinClient:
         Construct a full URL for a given Jellyfin path.
         """
         scheme, host, port, token = self._read_settings()
-        if not host or not port or not port.isdigit() or not token:
+        if not host or not port or not port.isdigit():
             return None
-        base = f"{scheme}://{host}:{port}"
+
+        try:
+            pnum = int(port)
+            if pnum < 1 or pnum > 65535:
+                return None
+        except Exception:
+            return None
+
+        if not path.startswith("/"):
+            path = f"/{path}"
+
+        base = f"{scheme}://{host}:{pnum}"
         return f"{base}{path}"
 
     def _is_transient_error(self, exc: Exception) -> bool:
@@ -70,9 +116,7 @@ class JellyfinClient:
             return {
                 "ok": False,
                 "status": 400,
-                "message": (
-                    "Missing or invalid host/port/token in settings."
-                ),
+                "message": "Missing or invalid host/port/token in settings.",
             }
 
         _, _, _, token = self._read_settings()
@@ -185,10 +229,53 @@ class JellyfinClient:
         """
         Returns all items in a library.
         """
-        path = (
-            f"/Items?ParentId={library_id}&Recursive=true&Limit=0"
-        )
-        return self._get(path)
+        page_size = 1000
+        start_index = 0
+        aggregated: List[Dict[str, Any]] = []
+        seen_ids: set = set()
+        last_status = 200
+
+        while True:
+            path = (
+                f"/Items?ParentId={library_id}&Recursive=true"
+                f"&Limit={page_size}&StartIndex={start_index}"
+            )
+            resp = self._get(path)
+            last_status = resp.get("status", last_status)
+            if not resp.get("ok"):
+                return resp
+            
+            data = resp.get("data", {})
+            if isinstance(data, dict):
+                page_items = data.get("Items", [])
+                total = data.get("TotalRecordCount", None)
+            elif isinstance(data, list):
+                page_items = data
+                total = None
+            else:
+                page_items = []
+                total = None
+
+            new_added = 0
+            for it in page_items:
+                jf_id = (it.get("Id") or "").strip()
+                if not jf_id or jf_id in seen_ids:
+                    continue
+                seen_ids.add(jf_id)
+                aggregated.append(it)
+                new_added += 1
+
+            if (total is not None and len(aggregated) >= int(total)) or len(page_items) < page_size:
+                return {
+                    "ok": True,
+                    "status": last_status,
+                    "data": {
+                        "Items": aggregated,
+                        "TotalRecordCount": total if total is not None else len(aggregated),
+                        "StartIndex": 0
+                    },
+                }
+            start_index += len(page_items)
 
     def library_stats(self, library_id: str) -> Dict[str, Any]:
         """

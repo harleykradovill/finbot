@@ -362,7 +362,6 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         return jsonify(result), 200
 
     @app.get("/api/jellyfin/libraries")
-    @app.get("/api/jellyfin/libraries")
     def api_jf_libraries() -> Response:
         """
         Fetches libraries with item counts and upserts to repository.
@@ -381,12 +380,45 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             else:
                 flat = []
 
-            for lib in flat:
-                lib_id = lib.get("Id")
-                if lib_id:
-                    stats = jf.library_stats(lib_id)
-                    if stats.get("ok"):
-                        lib["ItemCount"] = stats.get("item_count", 0)
+            try:
+                import concurrent.futures
+
+                id_map = [
+                    (idx, lib.get("Id"))
+                    for idx, lib in enumerate(flat)
+                    if lib.get("Id")
+                ]
+
+                if id_map:
+                    max_workers = min(8, len(id_map))
+                    with concurrent.futures.ThreadPoolExecutor(
+                        max_workers=max_workers
+                    ) as ex:
+                        future_to_idx = {
+                            ex.submit(jf.library_stats, jf_id): idx
+                            for idx, jf_id in id_map
+                        }
+
+                        for fut in concurrent.futures.as_completed(
+                            future_to_idx, timeout=None
+                        ):
+                            idx = future_to_idx.get(fut)
+                            try:
+                                stats = fut.result(timeout=5)
+                                flat[idx]["ItemCount"] = (
+                                    stats.get("item_count", 0)
+                                    if isinstance(stats, dict) and stats.get("ok")
+                                    else 0
+                                )
+                            except Exception:
+                                flat[idx]["ItemCount"] = 0
+            except Exception:
+                for lib in flat:
+                    lib_id = lib.get("Id")
+                    if lib_id:
+                        stats = jf.library_stats(lib_id)
+                        if stats.get("ok"):
+                            lib["ItemCount"] = stats.get("item_count", 0)
 
             def _is_media_library(lib: dict) -> bool:
                 t = (lib.get("CollectionType") or lib.get("Type") or "")
@@ -433,10 +465,36 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         
         try:
             libraries = repo.list_libraries(include_archived=False)
+
+            for lib in libraries:
+                jf_id = lib.get("jellyfin_id")
+                if not jf_id:
+                    lib["item_count"] = 0
+                    continue
+
+                t = (lib.get("type") or "").strip().lower()
+                if "tvshows" in t:
+                    items_res = jf.library_items(jf_id)
+                    if items_res.get("ok"):
+                        items = items_res.get("data", {}).get("Items", []) or []
+                        series = sum(1 for it in items if (it.get("Type") or "").lower() == "series")
+                        episodes = sum(1 for it in items if (it.get("Type") or "").lower() == "episode")
+                        lib["series_count"] = series
+                        lib["episode_count"] = episodes
+                        lib["item_count"] = series + episodes
+                    else:
+                        lib["series_count"] = 0
+                        lib["episode_count"] = 0
+                        lib["item_count"] = 0
+                else:
+                    stats = jf.library_stats(jf_id)
+                    lib["item_count"] = stats.get("item_count", 0) if stats.get("ok") else 0
+
             return jsonify({
                 "ok": True,
                 "data": libraries
             }), 200
+        
         except Exception as exc:
             return jsonify({
                 "ok": False,
@@ -474,8 +532,9 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         """
         payload = request.get_json(silent=True) or {}
         sync_type = payload.get("type", "full")
+        auto_track = bool(payload.get("auto_track", False))
 
-        result = sync.sync_full()
+        result = sync.sync_full(auto_track=auto_track)
 
         return jsonify({
             "ok": result.success,

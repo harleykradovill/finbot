@@ -145,27 +145,37 @@ class SyncService:
                         items_data = items_result.get("data", {})
                         if isinstance(items_data, dict):
                             items_list = items_data.get("Items", [])
+                            total_reported = items_data.get("TotalRecordCount", None)
                         else:
                             items_list = []
+                            total_reported = None
                         
-                        mapped_items = map_items(
-                            items_list,
-                            lib_internal_id
-                        )
-                        count = self.repository.upsert_items(
-                            mapped_items
-                        )
-                        items_count += count
+                        try:
+                            mapped_items = map_items(items_list, lib_internal_id)
+                            count = self.repository.upsert_items(mapped_items)
+                            items_count += count
+
+                            active_item_ids = [it["jellyfin_id"] for it in mapped_items]
+                            self.repository.archive_missing_items(lib_internal_id, active_item_ids)
+
+                            type_counts: Dict[str, int] = {}
+                            for it in items_list:
+                                t = (it.get("Type") or it.get("TypeName") or "Unknown")
+                                type_counts[t] = type_counts.get(t, 0) + 1
+
+                            print(
+                                f"DEBUG: library_items({lib_jf_id}) -> "
+                                f"TotalRecordCount={total_reported} "
+                                f"ItemsReturned={len(items_list)} "
+                                f"MappedItems={len(mapped_items)} "
+                                f"Upserted={count} TypeCounts={type_counts}"
+                            )
+                        except Exception:
+                            traceback.print_exc()
+                            errors.append(
+                                f"Items processing failed for library {lib.get('name') or lib_jf_id}"
+                            )
                         
-                        # Archive items not in current list
-                        active_item_ids = [
-                            item["jellyfin_id"]
-                            for item in mapped_items
-                        ]
-                        self.repository.archive_missing_items(
-                            lib_internal_id,
-                            active_item_ids
-                        )
                     else:
                         errors.append(
                             f"Items sync failed for library "
@@ -298,9 +308,9 @@ class SyncService:
                 start_index += page_size
 
                 # Safety check to prevent infinite loops
-                if total_fetched > 100000:
+                if total_fetched > 500000:
                     error_msg = (
-                        "Activity log exceeded 100,000 entries, "
+                        "Activity log exceeded 500,000 entries, "
                         "stopping to prevent overload"
                     )
                     errors.append(error_msg)

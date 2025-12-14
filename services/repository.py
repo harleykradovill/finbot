@@ -129,19 +129,27 @@ class Repository:
         if not library_dicts:
             return 0
 
-        count = 0
         now = int(time.time())
+        processed = 0
 
         with self._session() as session:
+            jf_ids = [d.get("jellyfin_id") for d in library_dicts if d.get("jellyfin_id")]
+            existing = {}
+            if jf_ids:
+                rows = (
+                    session.query(Library)
+                    .filter(Library.jellyfin_id.in_(jf_ids))
+                    .all()
+                )
+                existing = {r.jellyfin_id: r for r in rows}
+
+            to_add = []
             for data in library_dicts:
                 jf_id = data.get("jellyfin_id")
                 if not jf_id:
                     continue
 
-                lib = session.query(Library).filter_by(
-                    jellyfin_id=jf_id
-                ).first()
-
+                lib = existing.get(jf_id)
                 if lib:
                     lib.name = data.get("name", lib.name)
                     lib.type = data.get("type", lib.type)
@@ -154,16 +162,18 @@ class Repository:
                         name=data.get("name", "Unknown"),
                         type=data.get("type"),
                         image_url=data.get("image_url"),
-                        tracked=False,
                         archived=False,
                         created_at=now,
                         updated_at=now,
                     )
+                    to_add.append(lib)
 
-                session.merge(lib)
-                count += 1
+                processed += 1
 
-        return count
+            if to_add:
+                session.add_all(to_add)
+
+        return processed
 
     def archive_missing_libraries(
         self, active_jellyfin_ids: List[str]
@@ -223,42 +233,54 @@ class Repository:
         if not item_dicts:
             return 0
 
-        count = 0
         now = int(time.time())
+        processed = 0
 
         with self._session() as session:
+            jf_ids = [d.get("jellyfin_id") for d in item_dicts if d.get("jellyfin_id")]
+            existing = {}
+            if jf_ids:
+                rows = (
+                    session.query(Item)
+                    .filter(Item.jellyfin_id.in_(jf_ids))
+                    .all()
+                )
+                existing = {r.jellyfin_id: r for r in rows}
+
+            to_add = []
             for data in item_dicts:
                 jf_id = data.get("jellyfin_id")
-                lib_id = data.get("library_id")
-                if not jf_id or lib_id is None:
+                if not jf_id:
                     continue
 
-                item = session.query(Item).filter_by(
-                    jellyfin_id=jf_id
-                ).first()
-
+                item = existing.get(jf_id)
                 if item:
+                    item.library_id = data.get("library_id", item.library_id)
+                    item.parent_id = data.get("parent_id", item.parent_id)
                     item.name = data.get("name", item.name)
                     item.type = data.get("type", item.type)
-                    item.parent_id = data.get("parent_id", item.parent_id)
                     item.archived = False
                     item.updated_at = now
                 else:
                     item = Item(
                         jellyfin_id=jf_id,
-                        library_id=lib_id,
+                        library_id=data.get("library_id"),
                         parent_id=data.get("parent_id"),
                         name=data.get("name", "Unknown"),
                         type=data.get("type"),
+                        play_count=0,
                         archived=False,
                         created_at=now,
                         updated_at=now,
                     )
+                    to_add.append(item)
 
-                session.merge(item)
-                count += 1
+                processed += 1
 
-        return count
+            if to_add:
+                session.add_all(to_add)
+
+        return processed
 
     def archive_missing_items(
         self, library_id: int, active_jellyfin_ids: List[str]
@@ -419,41 +441,55 @@ class Repository:
         if not event_dicts:
             return 0
 
-        count = 0
+        valid_events: List[Dict[str, Any]] = []
+        activity_ids: List[Any] = []
+        for event in event_dicts:
+            activity_log_id = event.get("activity_log_id")
+            user_id = event.get("user_id")
+            item_id = event.get("item_id")
+
+            if not activity_log_id or not user_id or not item_id:
+                continue
+
+            valid_events.append(event)
+            activity_ids.append(activity_log_id)
+
+        if not valid_events:
+            return 0
+
+        new_count = 0
         with self._session() as session:
-            for event in event_dicts:
-                activity_log_id = event.get("activity_log_id")
-                user_id = event.get("user_id")
-                item_id = event.get("item_id")
-
-                if not activity_log_id or not user_id or not item_id:
-                    continue
-
-                existing = (
-                    session.query(PlaybackActivity)
-                    .filter_by(activity_log_id=activity_log_id)
-                    .first()
+            existing_rows = []
+            if activity_ids:
+                existing_rows = (
+                    session.query(PlaybackActivity.activity_log_id)
+                    .filter(PlaybackActivity.activity_log_id.in_(activity_ids))
+                    .all()
                 )
-                if existing:
-                    # Already synced, skip
+            existing_ids = {r[0] for r in existing_rows}
+
+            to_add: List[PlaybackActivity] = []
+            for event in valid_events:
+                activity_log_id = event.get("activity_log_id")
+                if activity_log_id in existing_ids:
                     continue
 
                 activity = PlaybackActivity(
                     activity_log_id=activity_log_id,
-                    user_id=user_id,
-                    item_id=item_id,
+                    user_id=event.get("user_id"),
+                    item_id=event.get("item_id"),
                     event_name=event.get("event_name"),
                     event_overview=event.get("event_overview"),
                     activity_at=event.get("activity_at"),
                     username_denorm=event.get("username_denorm"),
                 )
+                to_add.append(activity)
+                new_count += 1
 
-                session.add(activity)
-                count += 1
+            if to_add:
+                session.add_all(to_add)
 
-            session.commit()
-
-        return count
+        return new_count
 
     # Task Logging
 
