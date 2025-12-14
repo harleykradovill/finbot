@@ -132,7 +132,7 @@ def map_playback_event(
     if not user_id or not item_id:
         return None
 
-    activity_log_id = jf_event.get("Id")
+    activity_log_id = jf_event.get("Id") or jf_event.get("ActivityId")
 
     event_name = (jf_event.get("Name") or "").strip()
     event_overview = (
@@ -141,21 +141,54 @@ def map_playback_event(
         or ""
     ).strip()
 
-    activity_timestamp = jf_event.get("Date")
-    if activity_timestamp:
-        from datetime import datetime
+    activity_timestamp = jf_event.get("Date") or jf_event.get("ActivityDate")
+    activity_at = None
+    if activity_timestamp is not None:
         try:
-            # Handle ISO 8601 format with Z suffix
-            dt = datetime.fromisoformat(
-                activity_timestamp.replace("Z", "+00:00")
-            )
-            activity_at = int(dt.timestamp())
+            if isinstance(activity_timestamp, (int, float)):
+                ts = int(activity_timestamp)
+                if ts > 10**12:
+                    ts = int(ts / 1000)
+                activity_at = ts
+            else:
+                from datetime import datetime
+                s = str(activity_timestamp).strip()
+                dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+                activity_at = int(dt.timestamp())
         except Exception:
-            import time
-            activity_at = int(time.time())
+            import time as _time
+            activity_at = int(_time.time())
     else:
-        import time
-        activity_at = int(time.time())
+        import time as _time
+        activity_at = int(_time.time())
+
+    session_id = jf_event.get("SessionId") or jf_event.get("Session")
+    client = jf_event.get("Client") or jf_event.get("ClientName")
+    device = jf_event.get("Device") or jf_event.get("DeviceName") or jf_event.get(
+        "DeviceId"
+    )
+
+    trans_info = jf_event.get("TranscodingInfo") or {}
+    is_transcoding = bool(
+        jf_event.get("IsTranscoding")
+        or trans_info
+        or jf_event.get("IsVideoTranscoding")
+        or jf_event.get("IsAudioTranscoding")
+    )
+    transcode_video = bool(
+        trans_info.get("IsVideoTranscoding")
+        or jf_event.get("IsVideoTranscoding")
+    )
+    transcode_audio = bool(
+        trans_info.get("IsAudioTranscoding")
+        or jf_event.get("IsAudioTranscoding")
+    )
+
+    play_method = (
+        jf_event.get("PlayMethod")
+        or jf_event.get("Method")
+        or (trans_info.get("Method") if isinstance(trans_info, dict) else None)
+    )
 
     return {
         "activity_log_id": activity_log_id,
@@ -165,6 +198,13 @@ def map_playback_event(
         "event_overview": event_overview,
         "activity_at": activity_at,
         "username_denorm": username,
+        "session_id": session_id,
+        "client": client,
+        "device": device,
+        "is_transcoding": is_transcoding,
+        "transcode_video": transcode_video,
+        "transcode_audio": transcode_audio,
+        "play_method": play_method,
     }
 
 
@@ -176,13 +216,13 @@ def map_playback_events(
     Transform a list of Jellyfin playback events into PlaybackActivity
     table row dicts.
     """
-    results = []
+    results: List[Dict[str, Any]] = []
     for event in jf_events:
-        user_id = event.get("UserId")
+        user_id = (event.get("UserId") or "").strip()
         username = None
         if user_lookup and user_id:
             username = user_lookup.get(user_id)
-        
+
         mapped = map_playback_event(event, username)
         if mapped:
             results.append(mapped)

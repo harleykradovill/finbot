@@ -36,7 +36,7 @@ class Repository:
     @contextmanager
     def _session(self):
         """Context manager for database sessions with auto-commit."""
-        session = self.SessionLocal()
+        session: Session = self.SessionLocal()
         try:
             yield session
             session.commit()
@@ -438,58 +438,74 @@ class Repository:
         """
         Insert playback activity records.
         """
+        import time
+        from services.data_models import PlaybackActivity
+
         if not event_dicts:
             return 0
 
-        valid_events: List[Dict[str, Any]] = []
-        activity_ids: List[Any] = []
-        for event in event_dicts:
-            activity_log_id = event.get("activity_log_id")
-            user_id = event.get("user_id")
-            item_id = event.get("item_id")
+        processed = 0
+        to_add: List[PlaybackActivity] = []
 
-            if not activity_log_id or not user_id or not item_id:
-                continue
-
-            valid_events.append(event)
-            activity_ids.append(activity_log_id)
-
-        if not valid_events:
-            return 0
-
-        new_count = 0
         with self._session() as session:
-            existing_rows = []
+            activity_ids = [
+                d.get("activity_log_id") for d in event_dicts
+                if d.get("activity_log_id") is not None
+            ]
+            existing_map = {}
             if activity_ids:
-                existing_rows = (
-                    session.query(PlaybackActivity.activity_log_id)
+                rows = (
+                    session.query(PlaybackActivity)
                     .filter(PlaybackActivity.activity_log_id.in_(activity_ids))
                     .all()
                 )
-            existing_ids = {r[0] for r in existing_rows}
+                existing_map = {r.activity_log_id: r for r in rows}
 
-            to_add: List[PlaybackActivity] = []
-            for event in valid_events:
-                activity_log_id = event.get("activity_log_id")
-                if activity_log_id in existing_ids:
+            for d in event_dicts:
+                act_id = d.get("activity_log_id")
+                if not act_id:
                     continue
 
-                activity = PlaybackActivity(
-                    activity_log_id=activity_log_id,
-                    user_id=event.get("user_id"),
-                    item_id=event.get("item_id"),
-                    event_name=event.get("event_name"),
-                    event_overview=event.get("event_overview"),
-                    activity_at=event.get("activity_at"),
-                    username_denorm=event.get("username_denorm"),
-                )
-                to_add.append(activity)
-                new_count += 1
+                existing = existing_map.get(act_id)
+                if existing:
+                    existing.user_id = d.get("user_id", existing.user_id)
+                    existing.item_id = d.get("item_id", existing.item_id)
+                    existing.event_name = d.get("event_name", existing.event_name)
+                    existing.event_overview = d.get("event_overview", existing.event_overview)
+                    existing.activity_at = d.get("activity_at", existing.activity_at)
+                    existing.username_denorm = d.get("username_denorm", existing.username_denorm)
+                    existing.session_id = d.get("session_id", existing.session_id)
+                    existing.client = d.get("client", existing.client)
+                    existing.device = d.get("device", existing.device)
+                    existing.is_transcoding = bool(d.get("is_transcoding", existing.is_transcoding))
+                    existing.transcode_video = bool(d.get("transcode_video", existing.transcode_video))
+                    existing.transcode_audio = bool(d.get("transcode_audio", existing.transcode_audio))
+                    existing.play_method = d.get("play_method", existing.play_method)
+                else:
+                    pa = PlaybackActivity(
+                        activity_log_id=act_id,
+                        user_id=d.get("user_id"),
+                        item_id=d.get("item_id"),
+                        event_name=d.get("event_name"),
+                        event_overview=d.get("event_overview"),
+                        activity_at=d.get("activity_at") or int(time.time()),
+                        username_denorm=d.get("username_denorm"),
+                        session_id=d.get("session_id"),
+                        client=d.get("client"),
+                        device=d.get("device"),
+                        is_transcoding=bool(d.get("is_transcoding", False)),
+                        transcode_video=bool(d.get("transcode_video", False)),
+                        transcode_audio=bool(d.get("transcode_audio", False)),
+                        play_method=d.get("play_method"),
+                    )
+                    to_add.append(pa)
+
+                processed += 1
 
             if to_add:
                 session.add_all(to_add)
 
-        return new_count
+        return processed
 
     # Task Logging
 
@@ -499,20 +515,25 @@ class Repository:
         """
         Create a new task log entry with RUNNING status.
         """
+        import time
+        from services.data_models import TaskLog
+
         now = int(time.time())
         with self._session() as session:
             task = TaskLog(
                 name=name,
                 type=task_type,
                 execution_type=execution_type,
-                started_at=now,
-                result="RUNNING",
                 duration_ms=0,
+                started_at=now,
+                finished_at=None,
+                result="RUNNING",
+                log_json=None,
             )
             session.add(task)
-            session.commit()
-            session.refresh(task)
-            return task.id
+
+            session.flush()
+            return int(task.id)
 
     def complete_task_log(
         self,

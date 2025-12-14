@@ -76,7 +76,7 @@ class JellyfinClient:
         Construct a full URL for a given Jellyfin path.
         """
         scheme, host, port, token = self._read_settings()
-        if not host or not port or not port.isdigit():
+        if not host or not port or not port.isdigit() or not token:
             return None
 
         try:

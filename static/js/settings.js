@@ -293,7 +293,6 @@
   const serverKeyDisplay = document.getElementById(
     'jf-server-key-display'
   );
-  const syncBar = document.getElementById('jf-sync-bar');
   const syncPercent = document.getElementById('jf-sync-percent');
 
   function showToast(message, kind = 'success') {
@@ -332,17 +331,6 @@
     }
   }
 
-  function updateSyncProgress(current, total) {
-    // Calculate and display progress percentage
-    const percent = total > 0
-      ? Math.round((current / total) * 100)
-      : 0;
-    if (syncBar) syncBar.style.width = `${percent}%`;
-    if (syncPercent) {
-      syncPercent.textContent = `${percent}%`;
-    }
-  }
-
   function displayServer(host, port, apiKey) {
     // Display server connection info (redacted API key)
     if (serverHostDisplay) {
@@ -374,38 +362,11 @@
           data.jf_port,
           data.jf_api_key
         );
-        // Check if initial sync is in progress
-        checkSyncProgress();
       } else {
         updateServerState(false);
       }
     } catch (err) {
       console.error('Failed to check server state:', err);
-    }
-  }
-
-  async function checkSyncProgress() {
-    // Poll for initial activity log sync progress
-    try {
-      const resp = await fetch(
-        '/api/analytics/server/sync-progress'
-      );
-      if (!resp.ok) return;
-      const data = await resp.json();
-
-      if (data.syncing) {
-        showSyncProgress(true);
-        updateSyncProgress(
-          data.processed_events || 0,
-          data.total_events || 1
-        );
-        // Poll again in 2 seconds
-        setTimeout(checkSyncProgress, 2000);
-      } else {
-        showSyncProgress(false);
-      }
-    } catch (err) {
-      // Endpoint may not exist yet; suppress error
     }
   }
 

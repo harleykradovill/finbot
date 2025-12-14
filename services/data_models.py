@@ -162,12 +162,20 @@ class PlaybackActivity(Base):
     event_overview = Column(Text, nullable=True)
     activity_at = Column(BigInteger, nullable=False)
     username_denorm = Column(String(255), nullable=True)
+    session_id = Column(String(128), nullable=True)
+    client = Column(String(255), nullable=True)
+    device = Column(String(255), nullable=True)
+    is_transcoding = Column(Boolean, default=False)
+    transcode_video = Column(Boolean, default=False)
+    transcode_audio = Column(Boolean, default=False)
+    play_method = Column(String(64), nullable=True)
 
     __table_args__ = (
         Index("idx_playback_activity_log_id", "activity_log_id"),
         Index("idx_playback_user_id", "user_id"),
         Index("idx_playback_item_id", "item_id"),
         Index("idx_playback_activity_at", "activity_at"),
+        Index("idx_playback_session_id", "session_id"),
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -183,6 +191,13 @@ class PlaybackActivity(Base):
             "event_overview": self.event_overview,
             "activity_at": self.activity_at,
             "username_denorm": self.username_denorm,
+            "session_id": self.session_id,
+            "client": self.client,
+            "device": self.device,
+            "is_transcoding": self.is_transcoding,
+            "transcode_video": self.transcode_video,
+            "transcode_audio": self.transcode_audio,
+            "play_method": self.play_method,
         }
 
 
