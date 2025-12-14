@@ -1,0 +1,66 @@
+.first-start {
+  max-width: 920px;
+  margin: 4rem auto;
+  padding: 1.5rem;
+  background: #0b0b0b;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+#first-start-form.first-start-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 720px) {
+  #first-start-form.first-start-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.jf-server-fieldset {
+  border: 1px solid var(--border);
+  padding: 1rem;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.jf-server-fieldset .form-field input,
+.jf-server-fieldset .form-field select,
+#first-start-form .form-field input,
+#first-start-form .form-field select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.jf-server-info .jf-server-host {
+  font-weight: 600;
+  color: var(--text);
+}
+.jf-server-info .jf-server-key {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.first-start .placeholder-title {
+  font-size: 1.5rem;
+  margin: 0 0 0.25rem 0;
+}
+
+#first-start-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.first-start-placeholder {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.first-start-placeholder .placeholder-title {
+  font-size: 1.5rem;
+  margin: 0 0 0.25rem 0;
+}

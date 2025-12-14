@@ -52,7 +52,17 @@
 (function () {
   const testConnectionBtn = document.getElementById('jf-test-connection-btn');
   const testSystemInfoBtn = document.getElementById('jf-test-sysinfo-btn');
-  const pullDataBtn = document.getElementById('jf-sync-data-btn');
+
+  function showToast(message, kind = 'success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = `toast ${kind}`;
+    el.setAttribute('role', 'status');
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 5000);
+  }
 
   if (testConnectionBtn) {
     testConnectionBtn.addEventListener('click', async () => {
@@ -108,39 +118,6 @@
       }
     });
   }
-
-  if (pullDataBtn) {
-  pullDataBtn.textContent = 'Sync Data';
-  pullDataBtn.addEventListener('click', async () => {
-    const originalText = pullDataBtn.textContent;
-    pullDataBtn.disabled = true;
-    pullDataBtn.textContent = 'Syncing...';
-
-    try {
-      const resp = await fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'full' })
-      });
-      const result = await resp.json();
-
-      if (result.ok) {
-        const data = result.data;
-        const msg = `Synced: ${data.users_synced} users, ${data.libraries_synced} libraries, ${data.items_synced} items (${data.duration_ms}ms)`;
-        showToast(msg, 'success');
-      } else {
-        const errors = result.data?.errors || ['Unknown error'];
-        showToast(`Sync failed: ${errors.join(', ')}`, 'error');
-      }
-    } catch (err) {
-      showToast('Failed to sync data', 'error');
-      console.error(err);
-    } finally {
-      pullDataBtn.textContent = originalText;
-      setTimeout(() => { pullDataBtn.disabled = false; }, 5000);
-    }
-  });
-}
 })();
 
 (function () {

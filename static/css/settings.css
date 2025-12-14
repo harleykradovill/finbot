@@ -1,0 +1,207 @@
+.settings-shell {
+  margin-top: 1rem;
+}
+
+.settings-container {
+  max-width: 960px;              
+  margin: 0 auto;                
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 1rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.settings-tab {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.settings-tab:hover {
+  background: #1a1a1a;
+  color: var(--accent);
+}
+
+.settings-tab.active {
+  background: #f0f0f0;
+  color: #000000;
+  border-color: #e6e6e6;
+}
+
+.settings-content {
+  background: var(--surface);
+  border-radius: 12px;
+  min-height: 320px;
+  transition: background-color 120ms ease;
+}
+
+.settings-placeholder .placeholder-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
+  color: var(--accent);
+}
+
+.settings-placeholder {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.settings-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem 1.5rem;
+  margin-top: 1rem;
+}
+
+.settings-form .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.about-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.about-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  text-decoration: none;
+  color: #000;                  
+  background: #f0f0f0;         
+  border: 1px solid #e6e6e6;
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  line-height: 0.8;
+  transition: background-color 120ms ease, border-color 120ms ease,
+              box-shadow 120ms ease, color 120ms ease;
+}
+
+.about-list a:focus {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.35);
+}
+
+.about-list a::after {
+  content: "↗";
+  font-size: 0.9em;
+  opacity: 0.7;
+}
+
+.libraries-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+}
+
+.libraries-list > li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.6rem;
+  align-items: center;
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+}
+
+.libraries-list > li span:first-child {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.libraries-list > li span:nth-child(2) {
+  color: var(--text-muted);
+}
+
+.libraries-list .btn {
+  background: #f0f0f0;
+  color: #000000;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+}
+
+.libraries-list .btn:hover {
+  background: #e6e6e6;
+}
+
+/* Debug Actions */
+.jf-debug-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.jf-debug-actions .btn {
+  flex: 1;
+  min-width: 140px;
+}
+
+/* Server Container */
+.jf-server-container {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  background: #1a1a1a;
+  position: relative;
+}
+
+.jf-server-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.jf-server-details {
+  flex: 1;
+}
+
+.jf-server-host {
+  font-size: 1.1rem;
+  color: var(--text);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  word-break: break-all;
+}
+
+.jf-server-key {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+               "Liberation Mono", "Courier New", monospace;
+  letter-spacing: 0.15px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-tab,
+  .settings-content {
+    transition: none;
+  }
+}

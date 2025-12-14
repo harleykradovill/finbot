@@ -328,7 +328,21 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
 
     @app.get("/")
     def index() -> Response:
+        settings = svc.get()
+        has_server = (
+            settings.get("jf_host")
+            and settings.get("jf_port")
+            and settings.get("jf_api_key")
+        )
+
+        if not has_server:
+            return render_template("first_start.html"), 200
+
         return render_template("index.html"), 200
+
+    @app.get("/first-start")
+    def first_start() -> Response:
+        return render_template("first_start.html"), 200
     
     @app.get("/users")
     def users() -> Response:
