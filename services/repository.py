@@ -388,7 +388,7 @@ class Repository:
         log sync.
         """
         from services.settings_store import Settings
-        
+
         try:
             with self._session() as session:
                 settings = (
@@ -396,10 +396,19 @@ class Repository:
                     .filter_by(id=1)
                     .first()
                 )
-                if settings:
+                if not settings:
+                    settings = Settings(
+                        id=1,
+                        jf_host=None,
+                        jf_port=None,
+                        jf_api_key_encrypted=None,
+                        last_activity_log_sync=timestamp
+                    )
+                    session.add(settings)
+                else:
                     settings.last_activity_log_sync = timestamp
                     session.merge(settings)
-                    session.commit()
+                session.commit()
         except Exception:
             pass
     

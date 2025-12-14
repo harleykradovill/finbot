@@ -136,3 +136,16 @@ class SettingsService:
         session.commit()
         session.refresh(obj)
         return obj
+    
+    def set_last_activity_log_sync(self, timestamp: int) -> None:
+        with self._session() as session:
+            settings = self._get_or_create_row(session)
+            settings.last_activity_log_sync = int(timestamp)
+            session.add(settings)
+            session.commit()
+            session.refresh(settings)
+
+    def get_last_activity_log_sync(self) -> Optional[int]:
+        with self._session() as session:
+            settings = session.query(Settings).first()
+            return settings.last_activity_log_sync if settings else None

@@ -131,7 +131,13 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         if not had_server and has_server:
             # Mark that we're starting initial sync to prevent 
             # scheduler from also triggering it
-            repo.set_last_activity_log_sync(int(time.time()))
+            svc.set_last_activity_log_sync(int(time.time()))
+
+            try:
+                current = svc.get_last_activity_log_sync()
+                print(f"DEBUG: last_activity_log_sync persisted -> {current}")
+            except Exception:
+                print("DEBUG: failed to read back last_activity_log_sync")
             
             # Trigger sync_initial in background thread
             import threading

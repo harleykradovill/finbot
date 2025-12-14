@@ -163,13 +163,6 @@ class SyncService:
                                 t = (it.get("Type") or it.get("TypeName") or "Unknown")
                                 type_counts[t] = type_counts.get(t, 0) + 1
 
-                            print(
-                                f"DEBUG: library_items({lib_jf_id}) -> "
-                                f"TotalRecordCount={total_reported} "
-                                f"ItemsReturned={len(items_list)} "
-                                f"MappedItems={len(mapped_items)} "
-                                f"Upserted={count} TypeCounts={type_counts}"
-                            )
                         except Exception:
                             traceback.print_exc()
                             errors.append(
@@ -374,9 +367,11 @@ class SyncService:
         """
         Perform incremental activity log sync for recent entries.
         """
+        import time
+
         start_time = time.time()
         task_id = self.repository.create_task_log(
-            name="Activity Log Incremental",
+            name="Activity Log Incremental Sync",
             task_type="sync",
             execution_type="incremental"
         )
@@ -417,6 +412,7 @@ class SyncService:
                     break
 
                 from services.mappers import map_playback_events
+
                 mapped = map_playback_events(page, user_lookup=None)
 
                 for m in mapped:
@@ -432,36 +428,55 @@ class SyncService:
                     break
                 start_index += len(page)
 
-            if processed > 0 and latest_event_ts:
-                advance_ts = int(latest_event_ts)
-                try:
-                    self.repository.set_last_activity_log_sync(advance_ts)
-                except Exception:
-                    pass
+            advance_ts = int(latest_event_ts) if latest_event_ts else int(time.time())
+            try:
+                self.repository.set_last_activity_log_sync(advance_ts)
+            except Exception:
+                errors.append("Failed to persist last_activity_log_sync")
 
+            duration_ms = int((time.time() - start_time) * 1000)
             self.repository.complete_task_log(
                 task_id=task_id,
                 result="SUCCESS" if not errors else "PARTIAL",
                 log_data={
                     "items_synced": processed,
                     "total_events": processed,
-                    "duration_ms": int((time.time() - start_time) * 1000),
+                    "duration_ms": duration_ms,
                     "errors": errors,
                     "min_date_used": min_date,
-                    "advanced_to": latest_event_ts if processed > 0 else None,
+                    "advanced_to": advance_ts,
                 },
             )
 
-            return SyncResult(success=(not errors), duration_ms=int((time.time() - start_time) * 1000),
-                              users_synced=0, libraries_synced=0, items_synced=processed, errors=errors)
+            return SyncResult(
+                success=(len(errors) == 0),
+                duration_ms=duration_ms,
+                users_synced=0,
+                libraries_synced=0,
+                items_synced=processed,
+                errors=errors,
+            )
 
         except Exception as exc:
+            duration_ms = int((time.time() - start_time) * 1000)
+            try:
+                self.repository.set_last_activity_log_sync(int(time.time()))
+            except Exception:
+                pass
+
             self.repository.complete_task_log(
                 task_id=task_id,
                 result="FAILED",
                 log_data={"message": str(exc)}
             )
-            return SyncResult(success=False, duration_ms=0, users_synced=0, libraries_synced=0, items_synced=0, errors=[str(exc)])
+            return SyncResult(
+                success=False,
+                duration_ms=duration_ms,
+                users_synced=0,
+                libraries_synced=0,
+                items_synced=processed,
+                errors=[str(exc)],
+            )
         
     def sync_initial(self) -> SyncResult:
         """

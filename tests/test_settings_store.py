@@ -83,3 +83,22 @@ def test_api_settings_clear_key(client) -> None:
     assert get.status_code == 200
     data = get.get_json()
     assert data["jf_api_key"] is None
+
+from services.settings_store import SettingsService
+
+
+def test_last_activity_log_sync_roundtrip() -> None:
+    """
+    Ensure the last_activity_log_sync marker can be persisted and read
+    via SettingsService.
+    """
+    svc = SettingsService(
+        database_url="sqlite:///:memory:",
+        encryption_key_path=":memory:"
+    )
+
+    assert svc.get_last_activity_log_sync() is None
+
+    ts = 1600000000
+    svc.set_last_activity_log_sync(ts)
+    assert svc.get_last_activity_log_sync() == ts
