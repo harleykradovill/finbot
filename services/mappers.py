@@ -95,12 +95,10 @@ def map_item(
     item_type = jf_item.get("Type") or jf_item.get("MediaType")
     parent_id = jf_item.get("ParentId")
 
-    # Extract runtime from RunTimeTicks (Jellyfin/.NET ticks = 100ns)
     runtime_seconds = 0
     rt = jf_item.get("RunTimeTicks") or jf_item.get("RunTimeTick") or 0
     try:
         rt_int = int(rt) if rt is not None else 0
-        # 1 second = 10_000_000 .NET ticks
         runtime_seconds = int(rt_int / 10_000_000)
     except Exception:
         runtime_seconds = 0
@@ -160,11 +158,6 @@ def map_playback_event(
     activity_log_id = jf_event.get("Id") or jf_event.get("ActivityId")
 
     event_name = (jf_event.get("Name") or "").strip()
-    event_overview = (
-        jf_event.get("ShortOverview")
-        or jf_event.get("Overview")
-        or ""
-    ).strip()
 
     activity_timestamp = jf_event.get("Date") or jf_event.get("ActivityDate")
     activity_at = None
@@ -187,49 +180,13 @@ def map_playback_event(
         import time as _time
         activity_at = int(_time.time())
 
-    session_id = jf_event.get("SessionId") or jf_event.get("Session")
-    client = jf_event.get("Client") or jf_event.get("ClientName")
-    device = jf_event.get("Device") or jf_event.get("DeviceName") or jf_event.get(
-        "DeviceId"
-    )
-
-    trans_info = jf_event.get("TranscodingInfo") or {}
-    is_transcoding = bool(
-        jf_event.get("IsTranscoding")
-        or trans_info
-        or jf_event.get("IsVideoTranscoding")
-        or jf_event.get("IsAudioTranscoding")
-    )
-    transcode_video = bool(
-        trans_info.get("IsVideoTranscoding")
-        or jf_event.get("IsVideoTranscoding")
-    )
-    transcode_audio = bool(
-        trans_info.get("IsAudioTranscoding")
-        or jf_event.get("IsAudioTranscoding")
-    )
-
-    play_method = (
-        jf_event.get("PlayMethod")
-        or jf_event.get("Method")
-        or (trans_info.get("Method") if isinstance(trans_info, dict) else None)
-    )
-
     return {
         "activity_log_id": activity_log_id,
         "user_id": user_id,
         "item_id": item_id,
         "event_name": event_name,
-        "event_overview": event_overview,
         "activity_at": activity_at,
         "username_denorm": username,
-        "session_id": session_id,
-        "client": client,
-        "device": device,
-        "is_transcoding": is_transcoding,
-        "transcode_video": transcode_video,
-        "transcode_audio": transcode_audio,
-        "play_method": play_method,
     }
 
 

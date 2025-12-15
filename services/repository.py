@@ -495,32 +495,16 @@ class Repository:
                     existing.user_id = d.get("user_id", existing.user_id)
                     existing.item_id = d.get("item_id", existing.item_id)
                     existing.event_name = d.get("event_name", existing.event_name)
-                    existing.event_overview = d.get("event_overview", existing.event_overview)
                     existing.activity_at = d.get("activity_at", existing.activity_at)
                     existing.username_denorm = d.get("username_denorm", existing.username_denorm)
-                    existing.session_id = d.get("session_id", existing.session_id)
-                    existing.client = d.get("client", existing.client)
-                    existing.device = d.get("device", existing.device)
-                    existing.is_transcoding = bool(d.get("is_transcoding", existing.is_transcoding))
-                    existing.transcode_video = bool(d.get("transcode_video", existing.transcode_video))
-                    existing.transcode_audio = bool(d.get("transcode_audio", existing.transcode_audio))
-                    existing.play_method = d.get("play_method", existing.play_method)
                 else:
                     pa = PlaybackActivity(
                         activity_log_id=act_id,
                         user_id=d.get("user_id"),
                         item_id=d.get("item_id"),
                         event_name=d.get("event_name"),
-                        event_overview=d.get("event_overview"),
                         activity_at=d.get("activity_at") or int(time.time()),
                         username_denorm=d.get("username_denorm"),
-                        session_id=d.get("session_id"),
-                        client=d.get("client"),
-                        device=d.get("device"),
-                        is_transcoding=bool(d.get("is_transcoding", False)),
-                        transcode_video=bool(d.get("transcode_video", False)),
-                        transcode_audio=bool(d.get("transcode_audio", False)),
-                        play_method=d.get("play_method"),
                     )
                     to_add.append(pa)
 
