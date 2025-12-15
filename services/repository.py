@@ -568,3 +568,21 @@ class Repository:
                 task.log_json = json.dumps(log_data)
 
             session.merge(task)
+
+    def get_task_logs(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """
+        Retrieve recent task log entries ordered by start time (newest first).
+        """
+        if not isinstance(limit, int) or limit < 1:
+            limit = 50
+        if limit > 500:
+            limit = 500
+
+        with self._session() as session:
+            rows = (
+                session.query(TaskLog)
+                .order_by(TaskLog.started_at.desc())
+                .limit(limit)
+                .all()
+            )
+            return [r.to_dict() for r in rows]

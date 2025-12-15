@@ -43,6 +43,9 @@
           <a id="libraries-tab" href="#libraries" class="settings-tab" role="tab" aria-selected="false" aria-controls="libraries" tabindex="-1">
             Libraries
           </a>
+          <a id="task-log-tab" href="#tasklog" class="settings-tab" role="tab" aria-selected="false" aria-controls="libraries" tabindex="-1">
+            Task Log
+          </a>
           <a id="about-tab" href="#about" class="settings-tab" role="tab" aria-selected="false" aria-controls="about" tabindex="-1">
             About
           </a>
@@ -169,6 +172,20 @@
             </div>
 
             <ul id="libraries-list" class="libraries-list" aria-labelledby="libraries-help" aria-label="Library items"></ul>
+          </div>
+        </div>
+
+        <div class="settings-content" role="tabpanel" id="tasklog" aria-labelledby="task-log-tab" hidden>
+          <div class="settings-placeholder">
+            <h2 class="placeholder-title">Task Log</h2>
+          </div>
+
+          <div id="tasklog-panel" class="settings-content" role="region" aria-label="Task Log">
+            <div id="tasklog-empty" class="settings-placeholder" hidden>
+              <p>No task logs found.</p>
+            </div>
+
+            <ul id="tasklog-list" class="libraries-list" aria-label="Task log items"></ul>
           </div>
         </div>
 

@@ -658,6 +658,24 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
                 "ok": False,
                 "message": f"Failed to fetch sync progress: {str(exc)}"
             }), 500
+        
+    @app.get("/api/analytics/task-logs")
+    def api_analytics_task_logs() -> Response:
+        """
+        Retrieve recent task log entries.
+        """
+        try:
+            limit = request.args.get("limit", 50, type=int)
+            if limit < 1 or limit > 500:
+                limit = 50
+
+            logs = repo.get_task_logs(limit=limit)
+            return jsonify({"ok": True, "data": logs}), 200
+        except Exception as exc:
+            return jsonify({
+                "ok": False,
+                "message": f"Failed to fetch task logs: {str(exc)}"
+            }), 500
 
     return app
 

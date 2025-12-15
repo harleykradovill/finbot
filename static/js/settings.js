@@ -491,3 +491,97 @@
 
   checkServerState();
 })();
+
+(function () {
+  const panel = document.getElementById('tasklog');
+  const list = document.getElementById('tasklog-list');
+  const empty = document.getElementById('tasklog-empty');
+  const tab = document.getElementById('task-log-tab');
+
+  function humanDuration(ms) {
+    if (!ms || ms <= 0) return '0s';
+    let s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    s = s % 3600;
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    if (h) return `${h}h ${m}m`;
+    if (m) return `${m}m ${sec}s`;
+    return `${sec}s`;
+  }
+
+  async function fetchJson(path) {
+    try {
+      const resp = await fetch(path);
+      if (!resp.ok) return { ok: false, message: 'Network error' };
+      return await resp.json();
+    } catch (err) {
+      return { ok: false, message: err?.message || 'Network error' };
+    }
+  }
+
+  function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
+    );
+  }
+
+  async function loadTaskLogs() {
+    try {
+      const result = await fetchJson('/api/analytics/task-logs');
+      if (!result.ok) {
+        console.error('Failed to load task logs', result.message);
+        if (empty) empty.hidden = false;
+        if (list) list.hidden = true;
+        return;
+      }
+
+      const logs = Array.isArray(result.data) ? result.data : [];
+      if (!logs.length) {
+        if (empty) empty.hidden = false;
+        if (list) list.hidden = true;
+        return;
+      }
+
+      if (empty) empty.hidden = true;
+      if (list) list.hidden = false;
+      list.innerHTML = '';
+
+      logs.forEach(l => {
+        const li = document.createElement('li');
+        li.style.padding = '0.6rem';
+        li.style.borderBottom = '1px solid var(--border)';
+        const started = l.started_at ? new Date(Number(l.started_at) * 1000) : null;
+
+        li.innerHTML = `
+          <div style="display:flex;justify-content:space-between;gap:0.75rem;align-items:center;">
+            <div>
+              <div style="font-weight:600;color:var(--text);">${escapeHtml(l.name || '(unnamed)')}</div>
+              <div style="font-size:0.9rem;color:var(--text-muted);">
+                ${started ? started.toLocaleString() : ''}
+                ${l.type ? ' • ' + escapeHtml(l.type) : ''}
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-weight:600;color:var(--text);">${humanDuration(Number(l.duration_ms || 0))}</div>
+              <div style="font-size:0.85rem;color:var(--text-muted);">${escapeHtml(l.result || '')}</div>
+            </div>
+          </div>
+        `;
+        list.appendChild(li);
+      });
+    } catch (err) {
+      console.error('Error loading task logs', err);
+      if (empty) empty.hidden = false;
+      if (list) list.hidden = true;
+    }
+  }
+
+  function loadIfVisible() {
+    if (panel && !panel.hidden) loadTaskLogs();
+  }
+
+  if (location.hash === '#tasklog') setTimeout(loadIfVisible, 0);
+  if (tab) tab.addEventListener('click', () => setTimeout(loadIfVisible, 0));
+})();
