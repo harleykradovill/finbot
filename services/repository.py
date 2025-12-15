@@ -230,38 +230,44 @@ class Repository:
         """
         Upsert media items by jellyfin_id.
         """
-        if not item_dicts:
-            return 0
+        import time
+        from services.data_models import Item
 
         now = int(time.time())
         processed = 0
-
         with self._session() as session:
-            jf_ids = [d.get("jellyfin_id") for d in item_dicts if d.get("jellyfin_id")]
-            existing = {}
-            if jf_ids:
-                rows = (
-                    session.query(Item)
-                    .filter(Item.jellyfin_id.in_(jf_ids))
-                    .all()
-                )
-                existing = {r.jellyfin_id: r for r in rows}
-
-            to_add = []
+            to_add: List[Item] = []
             for data in item_dicts:
                 jf_id = data.get("jellyfin_id")
                 if not jf_id:
                     continue
 
-                item = existing.get(jf_id)
+                item = session.query(Item).filter_by(jellyfin_id=jf_id).first()
                 if item:
-                    item.library_id = data.get("library_id", item.library_id)
                     item.parent_id = data.get("parent_id", item.parent_id)
                     item.name = data.get("name", item.name)
                     item.type = data.get("type", item.type)
                     item.archived = False
                     item.updated_at = now
+
+                    try:
+                        item.runtime_seconds = int(data.get("runtime_seconds", item.runtime_seconds or 0))
+                    except Exception:
+                        pass
+                    try:
+                        item.size_bytes = int(data.get("size_bytes", item.size_bytes or 0))
+                    except Exception:
+                        pass
                 else:
+                    try:
+                        runtime = int(data.get("runtime_seconds") or 0)
+                    except Exception:
+                        runtime = 0
+                    try:
+                        sizeb = int(data.get("size_bytes") or 0)
+                    except Exception:
+                        sizeb = 0
+
                     item = Item(
                         jellyfin_id=jf_id,
                         library_id=data.get("library_id"),
@@ -272,6 +278,8 @@ class Repository:
                         archived=False,
                         created_at=now,
                         updated_at=now,
+                        runtime_seconds=runtime,
+                        size_bytes=sizeb,
                     )
                     to_add.append(item)
 
@@ -310,6 +318,13 @@ class Repository:
 
         with self._session() as session:
             result = StatsAggregator.refresh_all_stats(session)
+            try:
+                session.commit()
+            except Exception:
+                try:
+                    session.rollback()
+                except Exception:
+                    pass
             return result
         
     def get_top_items_by_plays(

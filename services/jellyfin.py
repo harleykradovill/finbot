@@ -238,6 +238,7 @@ class JellyfinClient:
         while True:
             path = (
                 f"/Items?ParentId={library_id}&Recursive=true"
+                f"&Fields=MediaSources"
                 f"&Limit={page_size}&StartIndex={start_index}"
             )
             resp = self._get(path)

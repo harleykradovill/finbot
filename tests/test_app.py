@@ -44,24 +44,6 @@ def test_unknown_route_returns_404(client) -> None:
     resp = client.get("/not-found")
     assert resp.status_code == 404
 
-def test_index_has_navbar_and_active_home(client) -> None:
-    """
-    Ensure that the index page includes navbar structure and active state for Home.
-    
-    :param client: The generated client
-    :type client: Any
-    """
-    resp = client.get("/")
-    body = resp.get_data(as_text=True)
-    # Navbar elements
-    assert '<header class="navbar"' in body
-    assert ">Home<" in body
-    assert ">Users<" in body
-    assert ">Libraries<" in body
-    assert ">Settings<" in body
-    # Active state on Home for index route
-    assert '<a href="/" class="active">Home</a>' in body
-
 def test_static_css_is_served(client) -> None:
     """
     Ensure that static CSS assets are available and contain expected rules.

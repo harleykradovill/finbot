@@ -65,7 +65,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
 
     sync_scheduler = SyncScheduler(
         sync_service=sync,
-        interval_seconds=120  # 120 sec
+        interval_seconds=1800  # 30 min
     )
 
     if not app.config.get("DEBUG"):

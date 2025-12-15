@@ -74,14 +74,20 @@ class Library(Base):
     archived = Column(Boolean, default=False)
     created_at = Column(BigInteger, nullable=False)
     updated_at = Column(BigInteger, nullable=False)
+    total_time_seconds = Column(BigInteger, default=0)
+    total_files = Column(Integer, default=0)
+    size_bytes = Column(BigInteger, default=0)
+    total_playback_seconds = Column(BigInteger, default=0)
+    last_played_item_name = Column(String(512), nullable=True)
 
     items = relationship("Item", back_populates="library")
 
     __table_args__ = (
         Index("idx_library_jellyfin_id", "jellyfin_id"),
-        Index("idx_library_tracked", "tracked"),
         Index("idx_library_archived", "archived"),
         Index("idx_library_total_plays", "total_plays"),
+        Index("idx_library_total_time_seconds", "total_time_seconds"),
+        Index("idx_library_size_bytes", "size_bytes"),
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -93,6 +99,11 @@ class Library(Base):
             "image_url": self.image_url,
             "tracked": self.tracked,
             "total_plays": self.total_plays,
+            "total_time_seconds": self.total_time_seconds,
+            "total_files": self.total_files,
+            "size_bytes": self.size_bytes,
+            "total_playback_seconds": self.total_playback_seconds,
+            "last_played_item_name": self.last_played_item_name,
             "archived": self.archived,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
@@ -119,6 +130,8 @@ class Item(Base):
     archived = Column(Boolean, default=False)
     created_at = Column(BigInteger, nullable=False)
     updated_at = Column(BigInteger, nullable=False)
+    runtime_seconds = Column(Integer, default=0)
+    size_bytes = Column(BigInteger, default=0)
 
     library = relationship("Library", back_populates="items")
 
@@ -127,6 +140,8 @@ class Item(Base):
         Index("idx_item_library_id", "library_id"),
         Index("idx_item_archived", "archived"),
         Index("idx_item_play_count", "play_count"),
+        Index("idx_item_runtime_seconds", "runtime_seconds"),
+        Index("idx_item_size_bytes", "size_bytes"),
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -138,6 +153,8 @@ class Item(Base):
             "name": self.name,
             "type": self.type,
             "play_count": self.play_count,
+            "runtime_seconds": self.runtime_seconds,
+            "size_bytes": self.size_bytes,
             "archived": self.archived,
             "created_at": self.created_at,
             "updated_at": self.updated_at,

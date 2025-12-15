@@ -94,15 +94,41 @@ def map_item(
     
     item_type = jf_item.get("Type") or jf_item.get("MediaType")
     parent_id = jf_item.get("ParentId")
-    
+
+    # Extract runtime from RunTimeTicks (Jellyfin/.NET ticks = 100ns)
+    runtime_seconds = 0
+    rt = jf_item.get("RunTimeTicks") or jf_item.get("RunTimeTick") or 0
+    try:
+        rt_int = int(rt) if rt is not None else 0
+        # 1 second = 10_000_000 .NET ticks
+        runtime_seconds = int(rt_int / 10_000_000)
+    except Exception:
+        runtime_seconds = 0
+
+    size_bytes = 0
+    try:
+        m_sources = jf_item.get("MediaSources") or []
+        if isinstance(m_sources, list) and m_sources:
+            for src in m_sources:
+                if not isinstance(src, dict):
+                    continue
+                s = src.get("Size") or src.get("size") or 0
+                try:
+                    size_bytes += int(s)
+                except Exception:
+                    continue
+    except Exception:
+        size_bytes = 0
+
     return {
         "jellyfin_id": jf_id,
         "library_id": library_internal_id,
         "parent_id": parent_id,
         "name": name,
         "type": item_type,
+        "runtime_seconds": runtime_seconds,
+        "size_bytes": size_bytes,
     }
-
 
 def map_items(
     jf_items: List[Dict[str, Any]],
@@ -111,13 +137,12 @@ def map_items(
     """
     Transform a list of Jellyfin items into Item table row dicts.
     """
-    results = []
-    for item in jf_items:
-        mapped = map_item(item, library_internal_id)
+    results: List[Dict[str, Any]] = []
+    for it in jf_items or []:
+        mapped = map_item(it, library_internal_id)
         if mapped:
             results.append(mapped)
     return results
-
 
 def map_playback_event(
     jf_event: Dict[str, Any],
