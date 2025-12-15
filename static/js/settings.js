@@ -1,22 +1,121 @@
+const jf_helpers = (function () {
+  function getToastContainer() {
+    return document.getElementById('toast-container');
+  }
+
+  function showToast(message, kind = 'success', ttl = 5000) {
+    const container = getToastContainer();
+    if (!container) return;
+    const el = document.createElement('div');
+    el.className = `toast ${kind}`;
+    el.setAttribute('role', 'status');
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => el.remove(), ttl);
+  }
+
+  async function fetchJson(path, opts = {}) {
+    try {
+      const resp = await fetch(path, opts.method ? opts : { method: 'GET' });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        return { ok: false, status: resp.status, message: data?.message || 'HTTP error', data: null };
+      }
+      if (data && typeof data === 'object' && ('ok' in data || 'data' in data)) {
+        return data;
+      }
+      return { ok: true, status: resp.status, data };
+    } catch (err) {
+      return { ok: false, status: 0, message: err?.message || 'Network error', data: null };
+    }
+  }
+
+  async function postJson(path, body, method = 'POST') {
+    try {
+      const resp = await fetch(path, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        return { ok: false, status: resp.status, message: data?.message || 'HTTP error', data: null };
+      }
+      if (data && typeof data === 'object' && ('ok' in data || 'data' in data)) {
+        return data;
+      }
+      return { ok: true, status: resp.status, data };
+    } catch (err) {
+      return { ok: false, status: 0, message: err?.message || 'Network error', data: null };
+    }
+  }
+
+  function escapeHtml(s) {
+    if (s === null || s === undefined) return '';
+    return String(s).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
+    );
+  }
+
+  function humanDuration(ms) {
+    if (!ms || ms <= 0) return '0s';
+    let s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    s = s % 3600;
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    if (h) return `${h}h ${m}m`;
+    if (m) return `${m}m ${sec}s`;
+    return `${sec}s`;
+  }
+
+  function humanBytes(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${units[i]}`;
+  }
+
+  function humanTime(seconds) {
+    if (!seconds || seconds === 0) return '0s';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return h ? `${h}h ${m}m` : m ? `${m}m ${s}s` : `${s}s`;
+  }
+
+  function maskKey(key) {
+    if (!key) return '';
+    if (key.length <= 8) return '•'.repeat(Math.max(4, key.length));
+    return `${key.slice(0, 4)}…${key.slice(-4)}`;
+  }
+
+  return {
+    showToast,
+    fetchJson,
+    postJson,
+    escapeHtml,
+    humanDuration,
+    humanBytes,
+    humanTime,
+    maskKey,
+  };
+}());
+
+function showToast(message, kind = 'success') { return jf_helpers.showToast(message, kind); }
+async function fetchJson(path) { return jf_helpers.fetchJson(path); }
+async function postJson(path, body, method = 'POST') { return jf_helpers.postJson(path, body, method); }
+function escapeHtml(s) { return jf_helpers.escapeHtml(s); }
+function humanDuration(ms) { return jf_helpers.humanDuration(ms); }
+function humanBytes(bytes) { return jf_helpers.humanBytes(bytes); }
+function humanTime(seconds) { return jf_helpers.humanTime(seconds); }
+function maskKey(key) { return jf_helpers.maskKey(key); }
+
 (function () {
   const tabs = Array.from(document.querySelectorAll('.settings-tab'));
   const panels = Array.from(
     document.querySelectorAll('.settings-content[role="tabpanel"]')
   );
-
-  const toastContainer = document.getElementById('toast-container');
-  function showToast(message, kind = "success") {
-    if (!toastContainer) return;
-    const el = document.createElement('div');
-    el.className = `toast ${kind}`;
-    el.setAttribute('role', 'status');
-    el.textContent = message;
-    toastContainer.appendChild(el);
-
-    setTimeout(() => { // Auto-remove after 5s
-      el.remove();
-    }, 5000);
-  }
 
   function activate(id) {
     tabs.forEach(t => {
@@ -52,17 +151,6 @@
 (function () {
   const testConnectionBtn = document.getElementById('jf-test-connection-btn');
   const testSystemInfoBtn = document.getElementById('jf-test-sysinfo-btn');
-
-  function showToast(message, kind = 'success') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    const el = document.createElement('div');
-    el.className = `toast ${kind}`;
-    el.setAttribute('role', 'status');
-    el.textContent = message;
-    container.appendChild(el);
-    setTimeout(() => el.remove(), 5000);
-  }
 
   if (testConnectionBtn) {
     testConnectionBtn.addEventListener('click', async () => {
@@ -126,51 +214,12 @@
   const empty = document.getElementById('libraries-empty');
   const librariesTab = document.getElementById('libraries-tab');
 
-  function showToast(message, kind = "success") {
-    const toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) return;
-    const el = document.createElement('div');
-    el.className = `toast ${kind}`;
-    el.setAttribute('role', 'status');
-    el.textContent = message;
-    toastContainer.appendChild(el);
-    setTimeout(() => el.remove(), 3000);
-  }
-
-  async function fetchJson(path) {
-    try {
-      const resp = await fetch(path, { method: 'GET' });
-      const data = await resp.json();
-      if (!resp.ok) {
-        return { ok: false, status: resp.status, message: 'HTTP error', data: null };
-      }
-      return data;
-    } catch (err) {
-      return { ok: false, status: 0, message: err?.message || 'Network error', data: null };
-    }
-  }
-
-  async function postJson(path, body) {
-    try {
-      const resp = await fetch(path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await resp.json();
-      if (!resp.ok) {
-        return { ok: false, status: resp.status, message: 'HTTP error', data: null };
-      }
-      return data;
-    } catch (err) {
-      return { ok: false, status: 0, message: err?.message || 'Network error', data: null };
-    }
-  }
-
   async function loadLibraries() {
     const result = await fetchJson('/api/analytics/libraries');
     if (!result.ok) {
       showToast(result.message || 'Failed to load libraries', 'error');
+      if (empty) empty.hidden = false;
+      if (list) list.hidden = true;
       return;
     }
     const libs = Array.isArray(result.data) ? result.data : [];
@@ -250,7 +299,6 @@
 })();
 
 (function () {
-  // Jellyfin server management: Add/Remove server with state detection
   const noServerDiv = document.getElementById('jf-no-server');
   const serverAddedDiv = document.getElementById('jf-server-added');
   const syncProgressDiv = document.getElementById('jf-sync-progress');
@@ -264,81 +312,55 @@
   const modalHostInput = document.getElementById('jf-modal-host');
   const modalPortInput = document.getElementById('jf-modal-port');
   const modalKeyInput = document.getElementById('jf-modal-api-key');
-  const serverHostDisplay = document.getElementById(
-    'jf-server-host-display'
-  );
-  const serverKeyDisplay = document.getElementById(
-    'jf-server-key-display'
-  );
+  const serverHostDisplay = document.getElementById('jf-server-host-display');
+  const serverKeyDisplay = document.getElementById('jf-server-key-display');
   const syncPercent = document.getElementById('jf-sync-percent');
 
-  function showToast(message, kind = 'success') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-    const el = document.createElement('div');
-    el.className = `toast ${kind}`;
-    el.setAttribute('role', 'status');
-    el.textContent = message;
-    container.appendChild(el);
-    setTimeout(() => el.remove(), 5000);
-  }
-
   function openModal() {
+    if (!modal || !modalBackdrop || !modalHostInput) return;
     modal.hidden = false;
     modalBackdrop.hidden = false;
     modalHostInput.focus();
   }
 
   function closeModal() {
+    if (!modal || !modalBackdrop || !modalForm) return;
     modal.hidden = true;
     modalBackdrop.hidden = true;
     modalForm.reset();
   }
 
   function updateServerState(hasServer) {
-    // Toggle visibility between no-server and server-added states
     if (noServerDiv) noServerDiv.hidden = hasServer;
     if (serverAddedDiv) serverAddedDiv.hidden = !hasServer;
     if (syncProgressDiv) syncProgressDiv.hidden = true;
   }
 
   function showSyncProgress(show = true) {
-    if (syncProgressDiv) {
-      syncProgressDiv.hidden = !show;
-    }
+    if (syncProgressDiv) syncProgressDiv.hidden = !show;
   }
 
   function displayServer(host, port, apiKey) {
-    // Display server connection info (redacted API key)
     if (serverHostDisplay) {
       serverHostDisplay.textContent = `${host}:${port}`;
     }
     if (serverKeyDisplay) {
-      const redacted = apiKey
-        ? `API Key: ${apiKey.substring(0, 3)}**************************`
-        : 'API Key: *****************************';
+      const redacted = apiKey ? `API Key: ${apiKey.substring(0, 3)}**************************` : 'API Key: *****************************';
       serverKeyDisplay.textContent = redacted;
     }
   }
 
   async function checkServerState() {
-    // Query settings API to determine current server state
     try {
       const resp = await fetch('/api/settings');
       if (!resp.ok) return;
       const data = await resp.json();
 
-      const hasServer = !!(
-        data.jf_host && data.jf_port && data.jf_api_key
-      );
+      const hasServer = !!(data.jf_host && data.jf_port && data.jf_api_key);
 
       if (hasServer) {
         updateServerState(true);
-        displayServer(
-          data.jf_host,
-          data.jf_port,
-          data.jf_api_key
-        );
+        displayServer(data.jf_host, data.jf_port, data.jf_api_key);
       } else {
         updateServerState(false);
       }
@@ -347,17 +369,9 @@
     }
   }
 
-  if (addServerBtn) {
-    addServerBtn.addEventListener('click', openModal);
-  }
-
-  if (modalCloseBtn) {
-    modalCloseBtn.addEventListener('click', closeModal);
-  }
-
-  if (modalBackdrop) {
-    modalBackdrop.addEventListener('click', closeModal);
-  }
+  if (addServerBtn) addServerBtn.addEventListener('click', openModal);
+  if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+  if (modalBackdrop) modalBackdrop.addEventListener('click', closeModal);
 
   if (modalForm) {
     modalForm.addEventListener('submit', async (e) => {
@@ -373,15 +387,10 @@
       }
 
       try {
-        // Save server settings
         const resp = await fetch('/api/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jf_host: host,
-            jf_port: port,
-            jf_api_key: apiKey,
-          }),
+          body: JSON.stringify({ jf_host: host, jf_port: port, jf_api_key: apiKey }),
         });
 
         if (!resp.ok) {
@@ -391,7 +400,6 @@
 
         closeModal();
         showToast('Server added successfully', 'success');
-
         await checkServerState();
       } catch (err) {
         showToast('Error adding server', 'error');
@@ -416,28 +424,17 @@
       modalTestBtn.textContent = 'Testing...';
 
       try {
-        const resp = await fetch(
-          '/api/test-connection-with-credentials',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              jf_host: host,
-              jf_port: port,
-              jf_api_key: apiKey,
-            }),
-          }
-        );
+        const resp = await fetch('/api/test-connection-with-credentials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jf_host: host, jf_port: port, jf_api_key: apiKey }),
+        });
         const result = await resp.json();
 
         if (result.ok) {
           showToast('Connection successful!', 'success');
         } else {
-          const msg = (
-            result.message || 'Connection failed'
-          );
+          const msg = result.message || 'Connection failed';
           showToast(msg, 'error');
         }
       } catch (err) {
@@ -452,19 +449,13 @@
 
   if (removeServerBtn) {
     removeServerBtn.addEventListener('click', async () => {
-      if (!confirm('Remove Jellyfin server configuration?')) {
-        return;
-      }
+      if (!confirm('Remove Jellyfin server configuration?')) return;
 
       try {
         const resp = await fetch('/api/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jf_host: '',
-            jf_port: '',
-            jf_api_key: '',
-          }),
+          body: JSON.stringify({ jf_host: '', jf_port: '', jf_api_key: '' }),
         });
 
         if (!resp.ok) {
@@ -473,15 +464,13 @@
         }
 
         showToast('Server removed', 'success');
-        
         updateServerState(false);
         showSyncProgress(false);
-        
+
         const libList = document.getElementById('libraries-list');
         const libEmpty = document.getElementById('libraries-empty');
         if (libList) libList.innerHTML = '';
         if (libEmpty) libEmpty.hidden = false;
-        
       } catch (err) {
         showToast('Error removing server', 'error');
         console.error(err);
@@ -497,35 +486,6 @@
   const list = document.getElementById('tasklog-list');
   const empty = document.getElementById('tasklog-empty');
   const tab = document.getElementById('task-log-tab');
-
-  function humanDuration(ms) {
-    if (!ms || ms <= 0) return '0s';
-    let s = Math.floor(ms / 1000);
-    const h = Math.floor(s / 3600);
-    s = s % 3600;
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    if (h) return `${h}h ${m}m`;
-    if (m) return `${m}m ${sec}s`;
-    return `${sec}s`;
-  }
-
-  async function fetchJson(path) {
-    try {
-      const resp = await fetch(path);
-      if (!resp.ok) return { ok: false, message: 'Network error' };
-      return await resp.json();
-    } catch (err) {
-      return { ok: false, message: err?.message || 'Network error' };
-    }
-  }
-
-  function escapeHtml(s) {
-    if (s === null || s === undefined) return '';
-    return String(s).replace(/[&<>"']/g, c =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
-    );
-  }
 
   async function loadTaskLogs() {
     try {

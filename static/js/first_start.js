@@ -88,7 +88,7 @@
       const host = (hostInput?.value || "").trim();
       const port = (portInput?.value || "").trim();
       const apiKey = (keyInput?.value || "").trim();
-      const hourFormat = (document.getElementById("hour-format")?.vaLue || "24")
+      const hourFormat = (document.getElementById("hour-format")?.value || "24")
       const language = (document.getElementById("language")?.value || "en");
 
       if (!host || !port || !apiKey) {

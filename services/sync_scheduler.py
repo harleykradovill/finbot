@@ -54,49 +54,21 @@ class SyncScheduler:
     def _run_loop(self) -> None:
         import time
         import logging
-
-        logging.basicConfig(level=logging.INFO)
+        import traceback
 
         log = logging.getLogger(__name__)
         log.debug("SyncScheduler loop starting (interval=%s)", self.interval_seconds)
 
-        # TODO (WATCHDOG):
-        # - A separate watchdog worker should be implemented to poll active sessions
-        #   frequently while Borealis is running. That worker will
-        #   update live session durations and increment play counts on session end.
         while self._running:
             try:
-                log.info("SyncScheduler: running periodic full sync (lightweight)")
-                try:
-                    self.sync_service.sync_full(auto_track=False)
-                except Exception as exc:
-                    log.exception("Periodic full sync failed: %s", exc)
+                self.sync_service.sync_periodic()
             except Exception:
-                log.exception("Unexpected error during periodic full sync")
+                log.exception("Periodic sync failed")
+                traceback.print_exc()
 
-            try:
-                last_marker = None
-                try:
-                    last_marker = self.sync_service.repository.get_last_activity_log_sync()
-                except Exception:
-                    log.exception("Failed to read last activity log sync marker; skipping incremental")
-                    last_marker = None
-
-                if last_marker:
-                    log.info(
-                        "SyncScheduler: running incremental activity log sync (since marker=%s)",
-                        last_marker,
-                    )
-                    try:
-                        self.sync_service.sync_activity_log_incremental()
-                    except Exception as exc:
-                        log.exception("Incremental activity log sync failed: %s", exc)
-                else:
-                    log.info("No last_activity_log_sync marker present; skipping incremental activity log sync")
-            except Exception:
-                log.exception("Unexpected error during incremental sync decision")
-
-            for _ in range(self.interval_seconds):
-                if not self._running:
-                    break
-                time.sleep(1)
+            total = float(self.interval_seconds or 0)
+            slept = 0.0
+            while self._running and slept < total:
+                to_sleep = min(1.0, total - slept)
+                time.sleep(to_sleep)
+                slept += to_sleep

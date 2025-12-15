@@ -8,7 +8,7 @@ class SyncResultStub:
         self.success = success
 
 class FakeSyncService:
-    def sync_full(self):
+    def sync_metadata(self):
         time.sleep(0.01)
         return SyncResultStub(success=True)
 

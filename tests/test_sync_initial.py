@@ -44,7 +44,7 @@ def test_manual_full_sync_does_not_auto_track() -> None:
     fake = FakeJellyfinClient()
     sync = SyncService(jellyfin_client=fake, repository=repo)
 
-    res = sync.sync_full(auto_track=False)
+    res = sync.sync_metadata(auto_track=False)
     assert res is not None
 
     libs = {l["jellyfin_id"]: l for l in repo.list_libraries()}

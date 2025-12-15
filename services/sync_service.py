@@ -45,9 +45,9 @@ class SyncService:
     jellyfin_client: JellyfinClient
     repository: Repository
     
-    def sync_full(self, auto_track: bool = False) -> SyncResult:
+    def sync_metadata(self, auto_track: bool = False) -> SyncResult:
         """
-        Perform a full sync: users → libraries → items → reconciliation.
+        Perform a full sync: users → libraries → items.
         """
         start_time = time.time()
         errors: List[str] = []
@@ -514,7 +514,7 @@ class SyncService:
 
         try:
             # Step 1: Sync users, libraries, and items
-            full_result = self.sync_full(auto_track=True)
+            full_result = self.sync_metadata(auto_track=True)
             if not full_result.success and full_result.errors:
                 errors.extend(full_result.errors)
 
@@ -554,6 +554,85 @@ class SyncService:
         except Exception as exc:
             duration_ms = int((time.time() - start_time) * 1000)
             error_msg = f"Unexpected error during initial sync: {str(exc)}"
+            errors.append(error_msg)
+
+            result = SyncResult(
+                success=False,
+                duration_ms=duration_ms,
+                users_synced=0,
+                libraries_synced=0,
+                items_synced=0,
+                errors=errors,
+            )
+
+            self.repository.complete_task_log(
+                task_id=task_id,
+                result="FAILED",
+                log_data=result.to_dict(),
+            )
+
+            return result
+        
+    def sync_periodic(self) -> SyncResult:
+        """
+        Perform periodic sync: full metadata sync (users/libraries/items),
+        incremental activity log sync (if marker exists), and refresh play statistics.
+        """
+        start_time = time.time()
+        errors: List[str] = []
+
+        task_id = self.repository.create_task_log(
+            name="Periodic Sync",
+            task_type="sync",
+            execution_type="periodic"
+        )
+
+        try:
+            # Step 1: Sync users, libraries, and items
+            metadata_result = self.sync_metadata()
+            if not metadata_result.success and metadata_result.errors:
+                errors.extend(metadata_result.errors)
+
+            # Step 2: Sync activity log incrementally
+            activity_result = self.sync_activity_log_incremental()
+            if not activity_result.success and activity_result.errors:
+                errors.extend(activity_result.errors)
+
+            # Step 3: Refresh play statistics
+            try:
+                self.repository.refresh_play_stats()
+            except Exception as exc:
+                errors.append(f"Failed to refresh play stats: {str(exc)}")
+
+            duration_ms = int((time.time() - start_time) * 1000)
+            result = SyncResult(
+                success=(
+                    metadata_result.success
+                    and activity_result.success
+                ),
+                duration_ms=duration_ms,
+                users_synced=metadata_result.users_synced,
+                libraries_synced=metadata_result.libraries_synced,
+                items_synced=(
+                    metadata_result.items_synced
+                    + activity_result.items_synced
+                ),
+                errors=errors,
+            )
+
+            self.repository.complete_task_log(
+                task_id=task_id,
+                result=(
+                    "SUCCESS" if result.success else "FAILED"
+                ),
+                log_data=result.to_dict(),
+            )
+
+            return result
+
+        except Exception as exc:
+            duration_ms = int((time.time() - start_time) * 1000)
+            error_msg = f"Unexpected error during periodic sync: {str(exc)}"
             errors.append(error_msg)
 
             result = SyncResult(
