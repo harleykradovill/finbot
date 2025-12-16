@@ -1,7 +1,7 @@
 # Project
 .vscode
 .idea
-.github/*
+.github
 borealis_data.db
 borealis.db
 api
