@@ -2,7 +2,6 @@
 .vscode
 .idea
 .github/*
-!.github/workflows/
 borealis_data.db
 borealis.db
 api

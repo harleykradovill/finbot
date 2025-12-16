@@ -1,11 +1,11 @@
 :root {
-  --bg: #121212;         
-  --surface: #121212;    
-  --text: #f0f0f0;       
-  --text-muted: #b3b3b3; 
+  --bg: #121212;
+  --surface: #121212;
+  --text: #f0f0f0;
+  --text-muted: #b3b3b3;
   --accent: #ffffff;
   --border: #333;
-  --focus: #ffffff;      
+  --focus: #ffffff;
 }
 
 .first-start {

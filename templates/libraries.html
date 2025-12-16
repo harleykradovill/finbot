@@ -7,56 +7,39 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
 </head>
 <body>
-  <header class="navbar" role="banner" aria-label="Primary">
-    <nav class="nav-container" role="navigation" aria-label="Main">
-      <a class="brand" href="/" aria-label="Borealis Home">
-        <img src="{{ url_for('assets', filename='images/borealis_small.png') }}"
-             alt="Borealis logo" class="brand-logo">
-        <span class="brand-text">Borealis</span>
-      </a>
-      <ul class="nav-links">
-        {% set is_home = request.path == url_for('index') %}
-        {% set is_users = request.path == url_for('users') %}
-        {% set is_libraries = request.path == url_for('libraries') %}
-        {% set is_settings = request.path == url_for('settings') %}
-        <li><a href="/" class="{{ 'active' if is_home else '' }}">Home</a></li>
-        <li><a href="/users" class="{{ 'active' if is_users else '' }}">Users</a></li>
-        <li><a href="/libraries" class="{{ 'active' if is_libraries else '' }}">Libraries</a></li>
-        <li><a href="/settings" class="{{ 'active' if is_settings else '' }}">Settings</a></li>
-      </ul>
-    </nav>
-  </header>
+  <div class="app-shell">
+    {% include '_sidebar.html' %}
+    <main id="content" class="content" tabindex="-1" role="main">
+      <section aria-label="Library statistics" class="hero" style="max-width:1200px;margin:1.5rem auto;">
+        <h1 style="margin:0 0 0.5rem 0;">Libraries</h1>
+        <p class="subtitle" style="margin:0 0 1rem 0;color:var(--text-muted);">
+          Per-library media totals and playback summary.
+        </p>
 
-  <main id="content" class="content" tabindex="-1" role="main">
-    <section aria-label="Library statistics" class="hero" style="max-width:1200px;margin:1.5rem auto;">
-      <h1 style="margin:0 0 0.5rem 0;">Libraries</h1>
-      <p class="subtitle" style="margin:0 0 1rem 0;color:var(--text-muted);">
-        Per-library media totals and playback summary.
-      </p>
+        <div id="libraries-empty" class="settings-placeholder" hidden>
+          <p>No libraries found.</p>
+        </div>
 
-      <div id="libraries-empty" class="settings-placeholder" hidden>
-        <p>No libraries found.</p>
-      </div>
-
-      <div id="libraries-container" hidden>
-        <table id="libraries-table" class="table" aria-label="Libraries table" style="width:100%;border-collapse:collapse;">
-          <thead>
-            <tr>
-              <th style="text-align:left;padding:0.5rem">Name</th>
-              <th style="text-align:left;padding:0.5rem">Type</th>
-              <th style="text-align:right;padding:0.5rem">Total time</th>
-              <th style="text-align:right;padding:0.5rem">Files</th>
-              <th style="text-align:right;padding:0.5rem">Size</th>
-              <th style="text-align:right;padding:0.5rem">Total plays</th>
-              <th style="text-align:right;padding:0.5rem">Total playback</th>
-              <th style="text-align:left;padding:0.5rem">Last played</th>
-            </tr>
-          </thead>
-          <tbody id="libraries-tbody"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+        <div id="libraries-container" hidden>
+          <table id="libraries-table" class="table" aria-label="Libraries table" style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="text-align:left;padding:0.5rem">Name</th>
+                <th style="text-align:left;padding:0.5rem">Type</th>
+                <th style="text-align:right;padding:0.5rem">Total time</th>
+                <th style="text-align:right;padding:0.5rem">Files</th>
+                <th style="text-align:right;padding:0.5rem">Size</th>
+                <th style="text-align:right;padding:0.5rem">Total plays</th>
+                <th style="text-align:right;padding:0.5rem">Total playback</th>
+                <th style="text-align:left;padding:0.5rem">Last played</th>
+              </tr>
+            </thead>
+            <tbody id="libraries-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <div id="toast-container"
        class="toast-container"

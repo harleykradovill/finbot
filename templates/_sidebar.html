@@ -1,0 +1,53 @@
+<aside class="sidebar" role="navigation" aria-label="Primary">
+  <a class="brand sidebar-brand" href="/" aria-label="Borealis Home">
+    <img src="{{ url_for('assets', filename='images/borealis_small.png') }}"
+         alt="Borealis logo" class="brand-logo">
+    <span class="brand-text">Borealis</span>
+  </a>
+
+  {# Determine active route for server-side highlighting #}
+  {% set is_home = request.path == url_for('index') %}
+  {% set is_users = request.path == url_for('users') %}
+  {% set is_libraries = request.path == url_for('libraries') %}
+  {% set is_settings = request.path == url_for('settings') %}
+  {% set is_first_start = request.path == url_for('first_start') %}
+
+  <ul class="sidebar-links" role="menu" aria-label="Main links">
+    <li role="none">
+      <a role="menuitem"
+         href="/"
+         class="{{ 'active' if is_home else '' }}"
+         {% if is_home %}aria-current="page"{% endif %}
+         data-path="{{ url_for('index') }}">Home</a>
+    </li>
+    <li role="none">
+      <a role="menuitem"
+         href="/users"
+         class="{{ 'active' if is_users else '' }}"
+         {% if is_users %}aria-current="page"{% endif %}
+         data-path="{{ url_for('users') }}">Users</a>
+    </li>
+    <li role="none">
+      <a role="menuitem"
+         href="/libraries"
+         class="{{ 'active' if is_libraries else '' }}"
+         {% if is_libraries %}aria-current="page"{% endif %}
+         data-path="{{ url_for('libraries') }}">Libraries</a>
+    </li>
+    <li role="none">
+      <a role="menuitem"
+         href="/settings"
+         class="{{ 'active' if is_settings else '' }}"
+         {% if is_settings %}aria-current="page"{% endif %}
+         data-path="{{ url_for('settings') }}">Settings</a>
+    </li>
+    {# Keep first-start available (useful for initial setup) #}
+    <li role="none">
+      <a role="menuitem"
+         href="/first-start"
+         class="{{ 'active' if is_first_start else '' }}"
+         {% if is_first_start %}aria-current="page"{% endif %}
+         data-path="{{ url_for('first_start') }}">First Start</a>
+    </li>
+  </ul>
+</aside>

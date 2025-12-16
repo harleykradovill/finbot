@@ -1,11 +1,11 @@
 :root {
-  --bg: #121212;         
-  --surface: #121212;    
-  --text: #f0f0f0;       
-  --text-muted: #b3b3b3; 
+  --bg: #121212;
+  --surface: #121212;
+  --text: #f0f0f0;
+  --text-muted: #b3b3b3;
   --accent: #ffffff;
   --border: #333;
-  --focus: #ffffff;      
+  --focus: #ffffff;
 }
 
 .settings-shell {
@@ -13,8 +13,8 @@
 }
 
 .settings-container {
-  max-width: 960px;              
-  margin: 0 auto;                
+  max-width: 960px;
+  margin: 0 auto;
   display: grid;
   grid-template-columns: 240px 1fr;
   gap: 1rem;
@@ -98,8 +98,8 @@
   align-items: center;
   gap: 0.4rem;
   text-decoration: none;
-  color: #000;                  
-  background: #f0f0f0;         
+  color: #000;
+  background: #f0f0f0;
   border: 1px solid #e6e6e6;
   border-radius: 999px;
   padding: 0.35rem 0.65rem;
@@ -160,18 +160,6 @@
   background: #e6e6e6;
 }
 
-/* Debug Actions */
-.jf-debug-actions {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.jf-debug-actions .btn {
-  flex: 1;
-  min-width: 140px;
-}
-
 /* Server Container */
 .jf-server-container {
   border: 1px solid var(--border);
@@ -214,11 +202,6 @@
   .settings-content {
     transition: none;
   }
-}
-
-#tasklog-panel {
-  max-height: 22rem;
-  overflow: hidden;
 }
 
 #tasklog-list {
