@@ -48,6 +48,24 @@
     `;
   }
 
+  let lastTestOk = false;
+  let testingConnection = false;
+
+  if (addBtn) {
+    addBtn.disabled = true;
+  }
+
+  [hostInput, portInput, keyInput].forEach((el) => {
+    if (!el) return;
+    el.addEventListener("input", () => {
+      lastTestOk = false;
+      if (addBtn) {
+        addBtn.disabled = true;
+        addBtn.setAttribute("aria-disabled", "true");
+      }
+    });
+  });
+
   if (testBtn) {
     testBtn.addEventListener("click", async () => {
       const host = (hostInput?.value || "").trim();
@@ -59,7 +77,15 @@
         return;
       }
 
+      if (testingConnection) return;
+      testingConnection = true;
       testBtn.disabled = true;
+
+      if (addBtn) {
+        addBtn.disabled = true;
+        addBtn.setAttribute("aria-disabled", "true");
+      }
+
       const original = testBtn.textContent;
       testBtn.textContent = "Testing...";
 
@@ -69,15 +95,29 @@
         "POST"
       );
 
+      testingConnection = false;
+
       if (result && result.ok) {
+        lastTestOk = true;
         showToast("Connection successful", "success");
+        if (addBtn) {
+          addBtn.disabled = false;
+          addBtn.removeAttribute("aria-disabled");
+          addBtn.focus();
+        }
       } else {
+        lastTestOk = false;
         const msg = result?.message || `Failed (status: ${result?.status ?? "n/a"})`;
         showToast(msg, "error");
+
+        if (addBtn) {
+          addBtn.disabled = true;
+          addBtn.setAttribute("aria-disabled", "true");
+        }
       }
 
       testBtn.textContent = original;
-      setTimeout(() => (testBtn.disabled = false), 5000);
+      setTimeout(() => (testBtn.disabled = false), 3000);
     });
   }
 
@@ -93,6 +133,11 @@
 
       if (!host || !port || !apiKey) {
         showToast("Please fill in host, port and API key", "error");
+        return;
+      }
+
+      if (!lastTestOk) {
+        showToast("Please test the connection and ensure it's successful before adding the server", "error");
         return;
       }
 

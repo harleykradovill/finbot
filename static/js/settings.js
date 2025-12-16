@@ -169,7 +169,7 @@ function maskKey(key) { return jf_helpers.maskKey(key); }
         console.error(err);
       } finally {
         testConnectionBtn.textContent = originalText;
-        const COOLDOWN_MS = 5000;
+        const COOLDOWN_MS = 3000;
         setTimeout(() => { testConnectionBtn.disabled = false; }, COOLDOWN_MS);
       }
     });
@@ -201,7 +201,7 @@ function maskKey(key) { return jf_helpers.maskKey(key); }
         console.error(err);
       } finally {
         testSystemInfoBtn.textContent = originalText;
-        const COOLDOWN_MS = 5000;
+        const COOLDOWN_MS = 3000;
         setTimeout(() => { testSystemInfoBtn.disabled = false; }, COOLDOWN_MS);
       }
     });
