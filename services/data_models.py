@@ -3,12 +3,9 @@ Borealis analytics data.
 """
 
 from __future__ import annotations
-
-from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from sqlalchemy import (
-    create_engine,
     Column,
     Integer,
     String,
@@ -16,13 +13,11 @@ from sqlalchemy import (
     BigInteger,
     Text,
     ForeignKey,
-    UniqueConstraint,
     Index,
 )
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
-
 
 class User(Base):
     """

@@ -3,16 +3,8 @@ Background scheduler that runs periodic sync operations.
 """
 
 from __future__ import annotations
-
-import time
 import threading
-from dataclasses import dataclass
-from typing import Optional
 
-from services.sync_service import SyncService
-
-
-@dataclass
 class SyncScheduler:
     """
     Background thread that runs sync operations on an interval.
