@@ -68,7 +68,14 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         interval_seconds=1800  # 30 min
     )
 
-    if not app.config.get("DEBUG"):
+    current_settings = svc.get()
+    has_server = bool(
+        current_settings.get("jf_host")
+        and current_settings.get("jf_port")
+        and current_settings.get("jf_api_key")
+    )
+
+    if not app.config.get("DEBUG") and has_server:
         sync_scheduler.start()
 
     import atexit
@@ -78,7 +85,9 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         Cleanup function called when app shuts down.
         """
         try:
-            sync_scheduler.stop()
+            sched = getattr(app, "sync_scheduler", None)
+            if sched:
+                sched.stop()
         except Exception:
             pass
         try:

@@ -22,7 +22,7 @@ class SyncScheduler:
     - Only run incremental activity-log sync if a last-activity marker exists.
     """
 
-    def __init__(self, sync_service, interval_seconds: int = 120):
+    def __init__(self, sync_service, interval_seconds: int = 1800):
         self.sync_service = sync_service
         self.interval_seconds = int(interval_seconds)
         self._thread = None
