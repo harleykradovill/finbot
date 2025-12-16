@@ -174,6 +174,23 @@ class StatsAggregator:
 
         out: List[Dict[str, Any]] = []
         for lib in query.all():
+            series_count = 0
+            episode_count = 0
+            try:
+                rows = (
+                    session.query(func.lower(Item.type).label("type"), func.count(Item.id))
+                    .filter(Item.library_id == lib.id, Item.archived == False)
+                    .group_by(func.lower(Item.type))
+                    .all()
+                )
+                for t, cnt in rows:
+                    if t == "series":
+                        series_count = int(cnt)
+                    elif t == "episode":
+                        episode_count = int(cnt)
+            except Exception:
+                series_count = 0
+                episode_count = 0
             out.append({
                 "id": lib.id,
                 "jellyfin_id": lib.jellyfin_id,
@@ -188,6 +205,9 @@ class StatsAggregator:
                 "total_playback_seconds": lib.total_playback_seconds,
                 "last_played_item_name": lib.last_played_item_name,
                 "archived": lib.archived,
+                "item_count": int(lib.total_files or 0),
+                "series_count": series_count,
+                "episode_count": episode_count,
                 "created_at": lib.created_at,
                 "updated_at": lib.updated_at,
             })

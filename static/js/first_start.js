@@ -162,15 +162,12 @@
             const syncing = Boolean(j.syncing);
 
             if (!syncing) {
-              // Sync finished (or nothing to do) -> navigate to app home
               setTimeout(() => { window.location.href = "/"; }, 800);
               return;
             }
 
-            // Timeout check
             if (Date.now() - startTs > TIMEOUT_MS) {
               showToast("Initial sync is taking longer than expected. You can continue to the app; background sync will finish automatically.", "error");
-              // allow user to continue
               setTimeout(() => { window.location.href = "/"; }, 1200);
               return;
             }
@@ -178,7 +175,6 @@
             // Continue polling
             setTimeout(pollProgress, POLL_INTERVAL);
           } catch (err) {
-            // On transient error, retry a few times then allow user to continue
             console.error("Sync progress fetch error", err);
             if (Date.now() - startTs > TIMEOUT_MS) {
               showToast("Unable to determine sync progress — continuing", "error");

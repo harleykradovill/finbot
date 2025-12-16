@@ -215,7 +215,7 @@ function maskKey(key) { return jf_helpers.maskKey(key); }
   const librariesTab = document.getElementById('libraries-tab');
 
   async function loadLibraries() {
-    const result = await fetchJson('/api/analytics/libraries');
+    const result = await fetchJson('/api/analytics/stats/libraries');
     if (!result.ok) {
       showToast(result.message || 'Failed to load libraries', 'error');
       if (empty) empty.hidden = false;
@@ -300,6 +300,7 @@ function maskKey(key) { return jf_helpers.maskKey(key); }
 
 (function () {
   const noServerDiv = document.getElementById('jf-no-server');
+  const serverAddedDiv = document.getElementById('jf-server-added');
   const syncProgressDiv = document.getElementById('jf-sync-progress');
   const addServerBtn = document.getElementById('jf-add-server-btn');
   const removeServerBtn = document.getElementById('jf-remove-server-btn');
