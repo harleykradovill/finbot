@@ -32,7 +32,7 @@
 .jf-server-fieldset {
   border: 1px solid var(--border);
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 12px;
   background: transparent;
 }
 
@@ -68,4 +68,40 @@
   margin: 0;
   color: var(--text-muted);
   font-size: 0.95rem;
+}
+
+.jf-sync-info {
+  margin: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+}
+
+#jf-first-sync-text {
+  align-items: center;
+  width: 100%;
+  text-align: center;
+  color: var(--accent);
+  font-size: 1.5rem;
+  margin-top: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.jf-sync-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-top: 3px solid #ffffff;
+  border-radius: 50%;
+  animation: spin 0.5s linear infinite;
+  margin: 0 auto 0.5rem;
+}
+
+#jf-first-sync[hidden] {
+  display: none !important;
 }

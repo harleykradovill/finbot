@@ -612,11 +612,9 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         Get the current progress of initial activity log sync.
         """
         try:
-            # Check if there's an in-progress full activity log sync
             task = repo.get_latest_sync_task()
 
             if not task or task["result"] != "RUNNING":
-                # No sync in progress
                 return jsonify({
                     "ok": True,
                     "syncing": False,

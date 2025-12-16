@@ -33,7 +33,7 @@
           </div>
         </div>
 
-        <fieldset aria-label="Jellyfin server" class="jf-server-fieldset" style="margin-top:1rem">
+        <fieldset aria-label="Jellyfin server" class="jf-server-fieldset" style="margin-top:1rem" id="server-box">
           <legend>Jellyfin Server</legend>
 
           <div id="jf-first-no-server" class="jf-server-container">
@@ -66,14 +66,13 @@
               <div id="jf-first-server-display"></div>
             </div>
           </div>
-
-          <div id="jf-first-sync-progress" class="jf-sync-progress" hidden>
-            <div class="jf-sync-info">
-              <p id="jf-first-sync-text">Performing initial sync</p>
-            </div>
-          </div>
         </fieldset>
       </form>
+
+      <div id="jf-first-sync" class="jf-sync-info" hidden role="status" aria-live="polite" aria-atomic="true">
+            <div class="jf-sync-spinner"></div>
+            <p id="jf-first-sync-text">Performing initial sync with Jellyfin.</>
+          </div>
 
     </section>
   </main>

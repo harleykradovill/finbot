@@ -97,6 +97,10 @@
       }
 
       addBtn.disabled = true;
+      testBtn.disabled = true;
+      hostInput.disabled = true;
+      portInput.disabled = true;
+      keyInput.disabled = true;
       const original = addBtn.textContent;
       addBtn.textContent = "Saving...";
 
@@ -116,22 +120,87 @@
         showToast("Failed to save settings", "error");
         addBtn.textContent = original;
         addBtn.disabled = false;
+        testBtn.disabled = false;
+        hostInput.disabled = false;
+        portInput.disabled = false;
+        keyInput.disabled = false;
         return;
       }
 
       try {
         const data = await resp.json();
         showToast("Server added successfully", "success");
+
         if (noServerDiv) noServerDiv.hidden = true;
         if (serverAddedDiv) serverAddedDiv.hidden = false;
         displayServer(host, port, apiKey);
-        window.location.href = "/";
+
+        const syncInfo = document.querySelector(".jf-sync-info");
+        const syncText = document.getElementById("jf-first-sync-text");
+        const placeholder = document.querySelector(".first-start-placeholder");
+        const serverBox = document.getElementById("server-box")
+        const firstStartForm = document.querySelector(".form-grid")
+
+        if (placeholder) placeholder.hidden = true;
+        if (form) form.hidden = true;
+        if (serverBox) serverBox.hidden = true;
+        if (firstStartForm) firstStartForm.hidden = true;
+        if (syncInfo) syncInfo.hidden = false;
+        if (syncText) syncText.textContent = "Performing initial sync";
+
+        const POLL_INTERVAL = 1000;
+        const TIMEOUT_MS = 10 * 60 * 1000;
+        const startTs = Date.now();
+
+        async function pollProgress() {
+          try {
+            const r = await fetch("/api/analytics/server/sync-progress", { cache: "no-store" });
+            if (!r.ok) throw new Error("Network");
+            const j = await r.json();
+            if (!j || !j.ok) throw new Error(j?.message || "Bad response");
+
+            const syncing = Boolean(j.syncing);
+
+            if (!syncing) {
+              // Sync finished (or nothing to do) -> navigate to app home
+              setTimeout(() => { window.location.href = "/"; }, 800);
+              return;
+            }
+
+            // Timeout check
+            if (Date.now() - startTs > TIMEOUT_MS) {
+              showToast("Initial sync is taking longer than expected. You can continue to the app; background sync will finish automatically.", "error");
+              // allow user to continue
+              setTimeout(() => { window.location.href = "/"; }, 1200);
+              return;
+            }
+
+            // Continue polling
+            setTimeout(pollProgress, POLL_INTERVAL);
+          } catch (err) {
+            // On transient error, retry a few times then allow user to continue
+            console.error("Sync progress fetch error", err);
+            if (Date.now() - startTs > TIMEOUT_MS) {
+              showToast("Unable to determine sync progress — continuing", "error");
+              window.location.href = "/";
+              return;
+            }
+            setTimeout(pollProgress, POLL_INTERVAL);
+          }
+        }
+
+        // Start polling loop
+        setTimeout(pollProgress, 500);
       } catch (err) {
         showToast("Saved but failed to parse response", "error");
+        console.error(err);
+        addBtn.textContent = original;
+        addBtn.disabled = false;
+        testBtn.disabled = false;
+        hostInput.disabled = false;
+        portInput.disabled = false;
+        keyInput.disabled = false;
       }
-
-      addBtn.textContent = original;
-      addBtn.disabled = false;
     });
   }
 })();

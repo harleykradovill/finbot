@@ -300,7 +300,6 @@ function maskKey(key) { return jf_helpers.maskKey(key); }
 
 (function () {
   const noServerDiv = document.getElementById('jf-no-server');
-  const serverAddedDiv = document.getElementById('jf-server-added');
   const syncProgressDiv = document.getElementById('jf-sync-progress');
   const addServerBtn = document.getElementById('jf-add-server-btn');
   const removeServerBtn = document.getElementById('jf-remove-server-btn');
