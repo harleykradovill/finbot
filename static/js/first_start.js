@@ -37,16 +37,6 @@
   const addBtn = document.getElementById("jf-first-add-btn");
   const form = document.getElementById("first-start-form");
   const noServerDiv = document.getElementById("jf-first-no-server");
-  const serverAddedDiv = document.getElementById("jf-first-server-added");
-  const serverDisplay = document.getElementById("jf-first-server-display");
-
-  function displayServer(host, port, apiKey) {
-    if (!serverDisplay) return;
-    serverDisplay.innerHTML = `
-      <div class="jf-server-host">${host}:${port}</div>
-      <div class="jf-server-key">API Key: ${maskKey(apiKey)}</div>
-    `;
-  }
 
   let lastTestOk = false;
   let testingConnection = false;
