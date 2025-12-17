@@ -79,7 +79,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         sync_scheduler.start()
 
     import atexit
-    
+
     def cleanup():
         """
         Cleanup function called when app shuts down.
@@ -98,7 +98,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             repo.engine.dispose()
         except Exception:
             pass
-    
+
     atexit.register(cleanup)
 
     @app.get("/assets/<path:filename>")
@@ -113,7 +113,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
     @app.get("/api/settings")
     def get_settings() -> Response:
         return jsonify(svc.get()), 200
-    
+
     @app.put("/api/settings")
     def update_settings() -> Response:
         payload = request.get_json(silent=True) or {}
@@ -160,7 +160,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             sync_thread.start()
 
         return jsonify(updated), 200
-    
+
     @app.teardown_appcontext
     def _dispose_db(_exc: Optional[BaseException]) -> None:
         try:
@@ -250,7 +250,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
                 "status": 0,
                 "message": f"Unexpected error: {str(exc)}"
             }), 200
-        
+
     @app.post("/api/test-connection-with-credentials")
     def test_connection_with_credentials() -> Response:
         """
@@ -351,15 +351,19 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
     @app.get("/first-start")
     def first_start() -> Response:
         return render_template("first_start.html"), 200
-    
+
     @app.get("/users")
     def users() -> Response:
         return render_template("users.html"), 200
-    
+
     @app.get("/libraries")
     def libraries() -> Response:
         return render_template("libraries.html"), 200
-    
+
+    @app.get("/activitylog")
+    def activitylog() -> Response:
+        return render_template("activitylog.html"), 200
+
     @app.get("/settings")
     def settings() -> Response:
         return render_template("settings.html"), 200
@@ -477,7 +481,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
         Retrieve all libraries from repository.
         """
         settings = svc.get()
-        
+
         if not (
             settings.get("jf_host")
             and settings.get("jf_port")
@@ -487,7 +491,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
                 "ok": True,
                 "data": []
             }), 200
-        
+
         try:
             libraries = repo.list_libraries(include_archived=False)
 
@@ -519,7 +523,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
                 "ok": True,
                 "data": libraries
             }), 200
-        
+
         except Exception as exc:
             return jsonify({
                 "ok": False,
@@ -565,7 +569,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             "ok": result.success,
             "data": result.to_dict()
         }), 200
-    
+
     @app.get("/api/analytics/stats/libraries")
     def api_analytics_stats_libraries() -> Response:
         """
@@ -592,7 +596,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             limit = request.args.get("limit", 10, type=int)
             if limit < 1 or limit > 100:
                 limit = 10
-            
+
             items = repo.get_top_items_by_plays(limit=limit)
             return jsonify({
                 "ok": True,
@@ -613,7 +617,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             limit = request.args.get("limit", 10, type=int)
             if limit < 1 or limit > 100:
                 limit = 10
-            
+
             users = repo.get_top_users_by_plays(limit=limit)
             return jsonify({
                 "ok": True,
@@ -624,7 +628,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
                 "ok": False,
                 "message": f"Failed to fetch user stats: {str(exc)}"
             }), 500
-        
+
     @app.get("/api/analytics/server/sync-progress")
     def api_analytics_server_sync_progress() -> Response:
         """
@@ -664,7 +668,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
                 "ok": False,
                 "message": f"Failed to fetch sync progress: {str(exc)}"
             }), 500
-        
+
     @app.get("/api/analytics/task-logs")
     def api_analytics_task_logs() -> Response:
         """
@@ -681,6 +685,26 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             return jsonify({
                 "ok": False,
                 "message": f"Failed to fetch task logs: {str(exc)}"
+            }), 500
+
+    @app.get("/api/analytics/activitylog")
+    def api_analytics_activity_log() -> Response:
+        """
+        Retrieve paginated activity log entries.
+        """
+        try:
+            page = request.args.get("page", 1, type=int) or 1
+            per_page = request.args.get("per_page", 25, type=int) or 25
+
+            page = max(1, int(page))
+            per_page = max(1, min(1000, int(per_page)))
+
+            res = repo.get_activity_logs(page=page, per_page=per_page)
+            return jsonify({"ok": True, "data": res}), 200
+        except Exception as exc:
+            return jsonify({
+                "ok": False,
+                "message": f"Failed to fetch activity logs: {str(exc)}"
             }), 500
 
     return app

@@ -426,7 +426,7 @@ class Repository:
                 session.commit()
         except Exception:
             pass
-    
+
     def get_latest_sync_task(
         self
     ) -> Optional[Dict[str, Any]]:
@@ -514,6 +514,40 @@ class Repository:
                 session.add_all(to_add)
 
         return processed
+    
+    def get_activity_logs(
+        self, page: int = 1, per_page: int = 50
+    ) -> Dict[str, Any]:
+        """
+        Return paginated activity logs ordered by newest first.
+        """
+        page = max(1, int(page or 1))
+        per_page = max(1, min(1000, int(per_page or 50)))
+        offset = (page - 1) * per_page
+
+        from sqlalchemy import func
+        from services.data_models import PlaybackActivity
+
+        with self._session() as session:
+            total = session.query(func.count(PlaybackActivity.id)).scalar() or 0
+
+            rows = (
+                session.query(PlaybackActivity)
+                .order_by(PlaybackActivity.activity_at.desc(), PlaybackActivity.id.desc())
+                .offset(offset)
+                .limit(per_page)
+                .all()
+            )
+
+            items = [r.to_dict() for r in rows]
+
+        return {
+            "ok": True,
+            "items": items,
+            "page": page,
+            "per_page": per_page,
+            "total": int(total),
+        }
 
     # Task Logging
 
@@ -569,12 +603,12 @@ class Repository:
 
             session.merge(task)
 
-    def get_task_logs(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_task_logs(self, limit: int = 25) -> List[Dict[str, Any]]:
         """
         Retrieve recent task log entries ordered by start time (newest first).
         """
         if not isinstance(limit, int) or limit < 1:
-            limit = 50
+            limit = 25
         if limit > 500:
             limit = 500
 

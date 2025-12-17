@@ -9,6 +9,7 @@
   {% set is_home = request.path == url_for('index') %}
   {% set is_users = request.path == url_for('users') %}
   {% set is_libraries = request.path == url_for('libraries') %}
+  {% set is_activitylog = request.path == url_for('activitylog') %}
   {% set is_settings = request.path == url_for('settings') %}
   {% set is_first_start = request.path == url_for('first_start') %}
 
@@ -36,18 +37,17 @@
     </li>
     <li role="none">
       <a role="menuitem"
+         href="/activitylog"
+         class="{{ 'active' if is_activitylog else '' }}"
+         {% if is_activitylog %}aria-current="page"{% endif %}
+         data-path="{{ url_for('activitylog') }}">Activity Log</a>
+    </li>
+    <li role="none">
+      <a role="menuitem"
          href="/settings"
          class="{{ 'active' if is_settings else '' }}"
          {% if is_settings %}aria-current="page"{% endif %}
          data-path="{{ url_for('settings') }}">Settings</a>
-    </li>
-    {# Keep first-start available (useful for initial setup) #}
-    <li role="none">
-      <a role="menuitem"
-         href="/first-start"
-         class="{{ 'active' if is_first_start else '' }}"
-         {% if is_first_start %}aria-current="page"{% endif %}
-         data-path="{{ url_for('first_start') }}">First Start</a>
     </li>
   </ul>
 </aside>

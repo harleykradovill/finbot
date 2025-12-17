@@ -1,0 +1,60 @@
+:root {
+  --bg: #121212;
+  --surface: #121212;
+  --text: #f0f0f0;
+  --text-muted: #b3b3b3;
+  --accent: #ffffff;
+  --border: #333;
+  --focus: #ffffff;
+}
+
+.table thead th {
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.table tbody tr td {
+  border-bottom: 1px solid rgba(0,0,0,0.03);
+  color: var(--text);
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table tbody tr:hover td {
+  background: rgba(0,0,0,0.02);
+}
+
+.pagination {
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pagination .btn {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.95rem;
+  color: #fff;
+  background-color: #222;
+}
+
+.pagination .btn.active,
+.pagination .btn[aria-current="page"] {
+  background: var(--focus);
+  color: #000;
+  background-color: #fff;
+  border-radius: 12px;
+}
+
+@media (max-width: 720px) {
+  .table thead th,
+  .table tbody tr td {
+    padding: 0.4rem;
+    font-size: 0.92rem;
+  }
+  .pagination {
+    gap: 0.35rem;
+  }
+}

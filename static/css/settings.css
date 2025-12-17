@@ -217,6 +217,6 @@
 #tasklog-list::-webkit-scrollbar { width: 10px; }
 #tasklog-list::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
 }
 #tasklog-list::-webkit-scrollbar-track { background: transparent; }

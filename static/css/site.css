@@ -315,7 +315,7 @@ html, body {
 #jf-modal-form input {
   appearance: none;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
   background: #1a1a1a;
   color: var(--text);
   padding: 0.75rem;
