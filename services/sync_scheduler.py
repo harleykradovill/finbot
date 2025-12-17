@@ -18,6 +18,7 @@ class SyncScheduler:
     def __init__(self, sync_service, interval_seconds: int = 1800):
         self.sync_service = sync_service
         self.interval_seconds = int(interval_seconds)
+        self._interval_lock = threading.Lock()
         self._thread = None
         self._running = False
 
@@ -59,3 +60,20 @@ class SyncScheduler:
                 to_sleep = min(1.0, total - slept)
                 time.sleep(to_sleep)
                 slept += to_sleep
+
+    def set_interval(self, seconds: int) -> None:
+        """
+        Update the interval (in seconds).
+        """
+        try:
+            sec = int(seconds)
+            if sec <= 0:
+                raise ValueError("interval must be > 0")
+        except Exception:
+            logging.warning("[WARN] Ignoring invalid sync interval: %s", seconds)
+            return
+
+        with self._interval_lock:
+            self.interval_seconds = sec
+
+        logging.info("[INFO] Sync interval updated to %s seconds", sec)

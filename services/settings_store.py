@@ -19,12 +19,13 @@ class Settings(Base):
     __tablename__ = "settings"
 
     id = Column(Integer, primary_key=True)
-    hour_format = Column(String(4), default="24")
+    hour_format = Column(String(4), default="12")
     language = Column(String(8), default="en")
     jf_host = Column(String(255), default="127.0.0.1")
     jf_port = Column(String(8), default="8096")
     jf_api_key_encrypted = Column(String(4096), nullable=True)
     last_activity_log_sync = Column(Integer, nullable=True)
+    sync_interval = Column(Integer, default=1800)
 
     def to_dict(self, fernet: Optional[Fernet] = None) -> Dict[str, Any]:
         """
@@ -48,6 +49,7 @@ class Settings(Base):
             "jf_host": self.jf_host,
             "jf_port": self.jf_port,
             "jf_api_key": api_key_plain,
+            "sync_interval": self.sync_interval
         }
 
 
@@ -93,7 +95,7 @@ class SettingsService:
         Update settings. Handles encryption for jf_api_key automatically.
         Unknown keys are ignored.
         """
-        allowed = {"hour_format", "language", "jf_host", "jf_port", "jf_api_key"}
+        allowed = {"hour_format", "language", "jf_host", "jf_port", "jf_api_key", "sync_interval"}
         clean: Dict[str, Any] = {k: v for k, v in values.items() if k in allowed}
 
         with self._session() as session:
@@ -106,7 +108,13 @@ class SettingsService:
                 settings.jf_host = clean["jf_host"]
             if "jf_port" in clean and isinstance(clean["jf_port"], str):
                 settings.jf_port = clean["jf_port"]
-
+            if "sync_interval" in clean:
+                try:
+                    val = int(clean["sync_interval"])
+                    if val > 0:
+                        settings.sync_interval = val
+                except Exception:
+                    pass
             if "jf_api_key" in clean:
                 api = clean["jf_api_key"]
 

@@ -462,7 +462,7 @@ class SyncService:
                     data = data.get("Items", []) if isinstance(data, dict) else []
 
                 if not data:
-                    logging.error("[WARNING] No activity entries for %s", min_date)
+                    logging.error("[WARNING] No activity entries since %s", min_date)
                     break
 
                 playback_events = [

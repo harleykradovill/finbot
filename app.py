@@ -73,12 +73,16 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
 
     from services.sync_scheduler import SyncScheduler
 
+    current_settings = svc.get()
+    initial_interval = int(current_settings.get("sync_interval") or 1800)
+
     sync_scheduler = SyncScheduler(
         sync_service=sync,
-        interval_seconds=1800  # 30 min
+        interval_seconds=initial_interval
     )
 
-    current_settings = svc.get()
+    app.sync_scheduler = sync_scheduler
+    
     has_server = bool(
         current_settings.get("jf_host")
         and current_settings.get("jf_port")
@@ -142,6 +146,17 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             and updated.get("jf_port")
             and updated.get("jf_api_key")
         )
+
+        try:
+            new_interval = updated.get("sync_interval")
+            sched = getattr(app, "sync_scheduler", None)
+            if sched and new_interval:
+                if hasattr(sched, "set_interval"):
+                    sched.set_interval(int(new_interval))
+                elif hasattr(sched, "interval_seconds"):
+                    sched.interval_seconds = int(new_interval)
+        except Exception:
+            logging.exception("[ERROR] Failed to apply sync_interval to scheduler")
 
         if not had_server and has_server:
             ts = int(time.time())

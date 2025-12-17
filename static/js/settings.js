@@ -117,6 +117,116 @@ function maskKey(key) { return jf_helpers.maskKey(key); }
     document.querySelectorAll('.settings-content[role="tabpanel"]')
   );
 
+  const fields = {
+        hour_format: document.getElementById('hour-format'),
+        language: document.getElementById('language'),
+        sync_interval: document.getElementById("sync-interval")
+      };
+
+  const lastKnown = {
+      hour_format: null,
+      language: null,
+      sync_interval: null
+    };
+
+  async function loadSettings() {
+    try {
+      const resp = await fetch('/api/settings');
+      if (!resp.ok) throw new Error(`GET failed: ${resp.status}`);
+      const data = await resp.json();
+
+      if (fields.hour_format) fields.hour_format.value = data.hour_format || '12';
+      if (fields.language) fields.language.value = data.language || 'en';
+      if (fields.sync_interval) fields.sync_interval.value = String(data.sync_interval || '1800');
+
+      lastKnown.hour_format = fields.hour_format ? fields.hour_format.value : null;
+      lastKnown.language = fields.language ? fields.language.value : null;
+      lastKnown.sync_interval = fields.sync_interval ? fields.sync_interval.value : null;
+    } catch (err) {
+      showToast('Failed to load settings', 'error');
+      console.error(err);
+    }
+  }
+
+    let saveTimer = null;
+    let pendingPayload = {};
+
+    function scheduleSave(payload) {
+      pendingPayload = Object.assign({}, pendingPayload, payload);
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        const toSend = pendingPayload;
+        pendingPayload = {};
+        saveTimer = null;
+        saveSettings(toSend);
+      }, 200);
+    }
+
+    async function saveSettings(payload) {
+    try {
+      const result = await postJson('/api/settings', payload, 'PUT');
+      if (!result || !result.ok) {
+        showToast(result?.message || 'Failed to save settings', 'error');
+        return;
+      }
+
+      const updated = (result && result.data && typeof result.data === 'object')
+          ? result.data
+          : result;
+
+      if (fields.hour_format && 'hour_format' in updated) {
+        fields.hour_format.value = updated.hour_format;
+        lastKnown.hour_format = updated.hour_format;
+      }
+      if (fields.language && 'language' in updated) {
+        fields.language.value = updated.language;
+        lastKnown.language = updated.language;
+      }
+      if (fields.sync_interval && 'sync_interval' in updated) {
+        fields.sync_interval.value = String(updated.sync_interval || '');
+        lastKnown.sync_interval = fields.sync_interval.value;
+      }
+
+      showToast('Settings saved', 'success');
+    } catch (err) {
+      showToast('Failed to save settings', 'error');
+      console.error(err);
+    }
+  }
+
+  function bindAutosave() {
+    if (fields.hour_format) {
+      fields.hour_format.addEventListener('blur', () => {
+        const v = fields.hour_format.value;
+        if (v !== lastKnown.hour_format) scheduleSave({ hour_format: v });
+      });
+      fields.hour_format.addEventListener('change', () => {
+        const v = fields.hour_format.value;
+        if (v !== lastKnown.hour_format) scheduleSave({ hour_format: v });
+      });
+    }
+    if (fields.language) {
+      fields.language.addEventListener('blur', () => {
+        const v = fields.language.value;
+        if (v !== lastKnown.language) scheduleSave({ language: v });
+      });
+      fields.language.addEventListener('change', () => {
+        const v = fields.language.value;
+        if (v !== lastKnown.language) scheduleSave({ language: v });
+      });
+    }
+    if (fields.sync_interval) {
+      fields.sync_interval.addEventListener('blur', () => {
+        const v = String(fields.sync_interval.value);
+        if (v !== lastKnown.sync_interval) scheduleSave({ sync_interval: Number(v) });
+      });
+      fields.sync_interval.addEventListener('change', () => {
+        const v = String(fields.sync_interval.value);
+        if (v !== lastKnown.sync_interval) scheduleSave({ sync_interval: Number(v) });
+      });
+    }
+  }
+
   function activate(id) {
     tabs.forEach(t => {
       const isActive = t.getAttribute('href') === `#${id}`;
@@ -146,6 +256,7 @@ function maskKey(key) { return jf_helpers.maskKey(key); }
 
   window.addEventListener('hashchange', fromHash);
   fromHash();
+  loadSettings().then(bindAutosave);
 })();
 
 (function () {
@@ -314,7 +425,6 @@ function maskKey(key) { return jf_helpers.maskKey(key); }
   const modalKeyInput = document.getElementById('jf-modal-api-key');
   const serverHostDisplay = document.getElementById('jf-server-host-display');
   const serverKeyDisplay = document.getElementById('jf-server-key-display');
-  const syncPercent = document.getElementById('jf-sync-percent');
 
   function openModal() {
     if (!modal || !modalBackdrop || !modalHostInput) return;
