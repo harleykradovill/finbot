@@ -57,7 +57,7 @@ class SyncService:
         items_count = 0
         
         task_id = self.repository.create_task_log(
-            name="Full Sync",
+            name="Metadata Sync",
             task_type="sync",
             execution_type="full"
         )
