@@ -33,12 +33,6 @@ class Repository:
         )
         Base.metadata.create_all(self.engine)
 
-        try:
-            from services.settings_store import Settings
-            Settings.metadata.create_all(self.engine)
-        except Exception:
-            pass
-
     @contextmanager
     def _session(self):
         """Context manager for database sessions with auto-commit."""
