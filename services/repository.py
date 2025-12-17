@@ -33,6 +33,12 @@ class Repository:
         )
         Base.metadata.create_all(self.engine)
 
+        try:
+            from services.settings_store import Settings
+            Settings.metadata.create_all(self.engine)
+        except Exception:
+            pass
+
     @contextmanager
     def _session(self):
         """Context manager for database sessions with auto-commit."""
@@ -380,6 +386,7 @@ class Repository:
         activity log sync.
         """
         from services.settings_store import Settings
+        import logging
         
         try:
             with self._session() as session:
@@ -392,40 +399,8 @@ class Repository:
                     return settings.last_activity_log_sync
                 return None
         except Exception:
+            logging.getLogger(__name__).exception("Failed to read last_activity_log_sync")
             return None
-
-    def set_last_activity_log_sync(
-        self,
-        timestamp: int
-    ) -> None:
-        """
-        Update the timestamp of the last successful activity
-        log sync.
-        """
-        from services.settings_store import Settings
-
-        try:
-            with self._session() as session:
-                settings = (
-                    session.query(Settings)
-                    .filter_by(id=1)
-                    .first()
-                )
-                if not settings:
-                    settings = Settings(
-                        id=1,
-                        jf_host=None,
-                        jf_port=None,
-                        jf_api_key_encrypted=None,
-                        last_activity_log_sync=timestamp
-                    )
-                    session.add(settings)
-                else:
-                    settings.last_activity_log_sync = timestamp
-                    session.merge(settings)
-                session.commit()
-        except Exception:
-            pass
 
     def get_latest_sync_task(
         self

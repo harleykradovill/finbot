@@ -58,7 +58,8 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
     from services.sync_service import SyncService
     sync = SyncService(
         jellyfin_client=jf,
-        repository=repo
+        repository=repo,
+        settings_service=svc
     )
 
     from services.sync_scheduler import SyncScheduler
@@ -116,6 +117,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
 
     @app.put("/api/settings")
     def update_settings() -> Response:
+        import logging
         payload = request.get_json(silent=True) or {}
 
         current_settings = svc.get()
@@ -138,12 +140,8 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             try:
                 svc.set_last_activity_log_sync(ts)
             except Exception:
-                print("DEBUG: failed to persist last_activity_log_sync to settings DB before initial sync")
+                logging.getLogger(__name__).error("DEBUG: failed to persist last_activity_log_sync to settings DB before initial sync")
 
-            try:
-                repo.set_last_activity_log_sync(ts)
-            except Exception:
-                print("DEBUG: failed to persist last_activity_log_sync to data DB before initial sync")
             import threading
 
             def run_initial_sync():

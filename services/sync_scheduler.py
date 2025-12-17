@@ -49,13 +49,13 @@ class SyncScheduler:
         import traceback
 
         log = logging.getLogger(__name__)
-        log.debug("SyncScheduler loop starting (interval=%s)", self.interval_seconds)
+        log.error("[INFO] SyncScheduler loop starting (interval=%s)", self.interval_seconds)
 
         while self._running:
             try:
                 self.sync_service.sync_periodic()
             except Exception:
-                log.exception("Periodic sync failed")
+                log.error("[ERROR] Periodic sync failed")
                 traceback.print_exc()
 
             total = float(self.interval_seconds or 0)

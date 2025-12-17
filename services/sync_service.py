@@ -43,6 +43,7 @@ class SyncResult:
 class SyncService:
     jellyfin_client: JellyfinClient
     repository: Repository
+    settings_service: Any
     
     def sync_metadata(self, auto_track: bool = False) -> SyncResult:
         """
@@ -244,6 +245,7 @@ class SyncService:
             page_size = 1000
             start_index = 0
             total_fetched = 0
+            latest_event_ts: Optional[int] = None
 
             while True:
                 # Fetch one page of activity log
@@ -297,6 +299,15 @@ class SyncService:
                     )
                     events_count += count
 
+                try:
+                    page_max = max(
+                        int(ev.get("activity_at") or 0) for ev in mapped_events
+                    )
+                    if page_max and (latest_event_ts is None or page_max > latest_event_ts):
+                        latest_event_ts = page_max
+                except Exception:
+                    pass
+
                 total_fetched += len(items)
                 start_index += page_size
 
@@ -312,8 +323,11 @@ class SyncService:
             if events_count > 0:
                 self.repository.refresh_play_stats()
 
-            now = int(time.time())
-            self.repository.set_last_activity_log_sync(now)
+            if latest_event_ts:
+                self.settings_service.set_last_activity_log_sync(int(latest_event_ts))
+            else:
+                now = int(time.time())
+                self.settings_service.set_last_activity_log_sync(now)
 
             duration_ms = int((time.time() - start_time) * 1000)
             result = SyncResult(
@@ -368,6 +382,7 @@ class SyncService:
         Perform incremental activity log sync for recent entries.
         """
         import time
+        import logging
 
         start_time = time.time()
         task_id = self.repository.create_task_log(
@@ -382,9 +397,11 @@ class SyncService:
 
         try:
             try:
-                last = self.repository.get_last_activity_log_sync()
+                last = self.settings_service.get_last_activity_log_sync()
             except Exception:
                 last = None
+
+            log = logging.getLogger(__name__)
 
             if not last:
                 duration_ms = int((time.time() - start_time) * 1000)
@@ -412,9 +429,15 @@ class SyncService:
                 min_ts = int(time.time()) - (minutes_back * 60)
 
             min_date = self._ts_to_iso(min_ts)
+            users = self.repository.list_users(include_archived=True)
+            user_lookup: Dict[str, str] = {
+                u["jellyfin_id"]: u["name"] for u in users
+            }
 
             start_index = 0
+            page_num = 0
             while True:
+                page_num += 1
                 resp = self.jellyfin_client.get_activity_log(
                     start_index=start_index,
                     limit=page_limit,
@@ -423,6 +446,7 @@ class SyncService:
                 )
                 if not resp.get("ok"):
                     errors.append(f"Failed to fetch activity log page at index {start_index}")
+                    log.error("Jellyfin get_activity_log returned not ok for start_index=%s: %s", start_index, resp.get("message"))
                     break
 
                 data = resp.get("data") or []
@@ -430,21 +454,28 @@ class SyncService:
                     data = data.get("Items", []) if isinstance(data, dict) else []
 
                 if not data:
+                    log.error("No activity entries returned from Jellyfin for min_date=%s start_index=%s", min_date, start_index)
                     break
 
-                user_lookup = None
-                mapped = map_playback_events(data, user_lookup=user_lookup)
-                try:
-                    inserted = self.repository.insert_playback_events(mapped)
-                    processed += inserted
-                except Exception as exc:
-                    errors.append(f"Failed to insert events: {str(exc)}")
+                playback_events = [
+                    item for item in data
+                    if item.get("Type") == "VideoPlaybackStopped"
+                ]
 
-                for ev in mapped:
-                    ts = ev.get("activity_at")
-                    if ts:
-                        if latest_event_ts is None or ts > latest_event_ts:
-                            latest_event_ts = ts
+                if playback_events:
+                    mapped = map_playback_events(playback_events, user_lookup=user_lookup)
+                    try:
+                        inserted = self.repository.insert_playback_events(mapped)
+                        processed += inserted
+                    except Exception as exc:
+                        errors.append(f"Failed to insert events: {str(exc)}")
+                        log.error("[ERROR] Failed to insert mapped playback events on page %s", page_num)
+
+                    for ev in mapped:
+                        ts = ev.get("activity_at")
+                        if ts:
+                            if latest_event_ts is None or ts > latest_event_ts:
+                                latest_event_ts = ts
 
                 if len(data) < page_limit:
                     break
@@ -452,9 +483,14 @@ class SyncService:
 
             if latest_event_ts:
                 try:
-                    self.repository.set_last_activity_log_sync(int(latest_event_ts))
+                    next_marker = int(latest_event_ts) + 1
+                    self.settings_service.set_last_activity_log_sync(next_marker)
                 except Exception:
                     errors.append("Failed to persist last activity marker")
+                    log.error("Failed to persist last_activity_log_sync=%s", latest_event_ts)
+
+            if processed > 0:
+                self.repository.refresh_play_stats()
 
             duration_ms = int((time.time() - start_time) * 1000)
             result = SyncResult(
@@ -471,6 +507,8 @@ class SyncService:
                 result=("SUCCESS" if result.success else "FAILED"),
                 log_data=result.to_dict(),
             )
+
+            logging.error("[INFO] Borealis Startup Complete")
 
             return result
 
