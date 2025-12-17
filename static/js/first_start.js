@@ -167,8 +167,6 @@
         showToast("Server added successfully", "success");
 
         if (noServerDiv) noServerDiv.hidden = true;
-        if (serverAddedDiv) serverAddedDiv.hidden = false;
-        displayServer(host, port, apiKey);
 
         const syncInfo = document.querySelector(".jf-sync-info");
         const syncText = document.getElementById("jf-first-sync-text");

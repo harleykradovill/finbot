@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import traceback
 from dataclasses import dataclass
 from typing import Dict, Any, List, Optional
+import logging
 
 from services.jellyfin import JellyfinClient
 from services.repository import Repository
@@ -197,6 +198,8 @@ class SyncService:
                 result="SUCCESS" if result.success else "FAILED",
                 log_data=result.to_dict(),
             )
+
+            logging.error("[INFO] Metadata Sync Complete")
             
             return result
             
@@ -345,6 +348,8 @@ class SyncService:
                 log_data=result.to_dict(),
             )
 
+            logging.error("[INFO] Full Activity Log Sync Complete")
+
             return result
 
         except Exception as exc:
@@ -382,7 +387,6 @@ class SyncService:
         Perform incremental activity log sync for recent entries.
         """
         import time
-        import logging
 
         start_time = time.time()
         task_id = self.repository.create_task_log(
@@ -508,7 +512,7 @@ class SyncService:
                 log_data=result.to_dict(),
             )
 
-            logging.error("[INFO] Borealis Startup Complete")
+            logging.error("[INFO] Incremental Activity Log Sync Complete")
 
             return result
 
@@ -585,6 +589,8 @@ class SyncService:
                 ),
                 log_data=result.to_dict(),
             )
+
+            logging.error("[INFO] Initial Sync Complete")
 
             return result
 
@@ -664,6 +670,8 @@ class SyncService:
                 ),
                 log_data=result.to_dict(),
             )
+
+            logging.error("[INFO] Periodic Sync Complete")
 
             return result
 
