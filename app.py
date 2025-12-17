@@ -3,6 +3,7 @@ Provides an application factory that constructs and configures a
 Flask instance used to server the Borealis site.
 """
 
+import logging
 from typing import Optional, Dict
 import time
 
@@ -19,6 +20,9 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
     """
     Create and configure the Borealis Flask application.
     """
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger().setLevel(logging.INFO)
+
     app = Flask(
         __name__,
         static_folder="static",
@@ -30,6 +34,11 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
     app.config.setdefault("DATABASE_URL", "sqlite:///borealis.db")
     app.config.setdefault("ENCRYPTION_KEY_PATH", "secret.key")
     app.config.setdefault("DATA_DATABASE_URL", "sqlite:///borealis_data.db")
+
+    logging.info("-=-=-=-=-=-=-=-=-=-=-=-=-")
+    logging.info("         Borealis        ")
+    logging.info("-=-=-=-=-=-=-=-=-=-=-=-=-")
+    logging.info("Starting Up")
 
     if test_config:
         app.config.update(test_config)
@@ -117,7 +126,6 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
 
     @app.put("/api/settings")
     def update_settings() -> Response:
-        import logging
         payload = request.get_json(silent=True) or {}
 
         current_settings = svc.get()
@@ -140,7 +148,7 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             try:
                 svc.set_last_activity_log_sync(ts)
             except Exception:
-                logging.getLogger(__name__).error("DEBUG: failed to persist last_activity_log_sync to settings DB before initial sync")
+                logging.error("[ERROR] Failed to persist last_activity_log_sync to settings DB before initial sync")
 
             import threading
 
@@ -704,6 +712,8 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
                 "ok": False,
                 "message": f"Failed to fetch activity logs: {str(exc)}"
             }), 500
+
+    logging.info("Startup Complete. Running sync tasks")
 
     return app
 

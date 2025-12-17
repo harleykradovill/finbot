@@ -50,6 +50,8 @@ class SyncService:
         """
         Perform a full sync: users → libraries → items.
         """
+        logging.info("[INFO] Starting Metadata Sync")
+
         start_time = time.time()
         errors: List[str] = []
         users_count = 0
@@ -199,7 +201,7 @@ class SyncService:
                 log_data=result.to_dict(),
             )
 
-            logging.error("[INFO] Metadata Sync Complete")
+            logging.info("[INFO] Metadata Sync Complete")
             
             return result
             
@@ -228,6 +230,8 @@ class SyncService:
         """
         Perform initial full activity log sync from Jellyfin.
         """
+        logging.info("[INFO] Starting Full Activity Log Sync")
+
         start_time = time.time()
         errors: List[str] = []
         events_count = 0
@@ -348,7 +352,7 @@ class SyncService:
                 log_data=result.to_dict(),
             )
 
-            logging.error("[INFO] Full Activity Log Sync Complete")
+            logging.info("[INFO] Full Activity Log Sync Complete")
 
             return result
 
@@ -388,6 +392,8 @@ class SyncService:
         """
         import time
 
+        logging.info("[INFO] Starting Incremental Activity Log Sync")
+
         start_time = time.time()
         task_id = self.repository.create_task_log(
             name="Activity Log Incremental Sync",
@@ -404,8 +410,6 @@ class SyncService:
                 last = self.settings_service.get_last_activity_log_sync()
             except Exception:
                 last = None
-
-            log = logging.getLogger(__name__)
 
             if not last:
                 duration_ms = int((time.time() - start_time) * 1000)
@@ -450,7 +454,7 @@ class SyncService:
                 )
                 if not resp.get("ok"):
                     errors.append(f"Failed to fetch activity log page at index {start_index}")
-                    log.error("Jellyfin get_activity_log returned not ok for start_index=%s: %s", start_index, resp.get("message"))
+                    logging.error("[ERROR] Jellyfin get_activity_log returned not ok for start_index=%s: %s", start_index, resp.get("message"))
                     break
 
                 data = resp.get("data") or []
@@ -458,7 +462,7 @@ class SyncService:
                     data = data.get("Items", []) if isinstance(data, dict) else []
 
                 if not data:
-                    log.error("No activity entries returned from Jellyfin for min_date=%s start_index=%s", min_date, start_index)
+                    logging.error("[WARNING] No activity entries for %s", min_date)
                     break
 
                 playback_events = [
@@ -473,7 +477,7 @@ class SyncService:
                         processed += inserted
                     except Exception as exc:
                         errors.append(f"Failed to insert events: {str(exc)}")
-                        log.error("[ERROR] Failed to insert mapped playback events on page %s", page_num)
+                        logging.error("[ERROR] Failed to insert mapped playback events on page %s", page_num)
 
                     for ev in mapped:
                         ts = ev.get("activity_at")
@@ -491,7 +495,7 @@ class SyncService:
                     self.settings_service.set_last_activity_log_sync(next_marker)
                 except Exception:
                     errors.append("Failed to persist last activity marker")
-                    log.error("Failed to persist last_activity_log_sync=%s", latest_event_ts)
+                    logging.error("[ERROR] Failed to persist last_activity_log_sync=%s", latest_event_ts)
 
             if processed > 0:
                 self.repository.refresh_play_stats()
@@ -512,7 +516,7 @@ class SyncService:
                 log_data=result.to_dict(),
             )
 
-            logging.error("[INFO] Incremental Activity Log Sync Complete")
+            logging.info("[INFO] Incremental Activity Log Sync Complete")
 
             return result
 
@@ -542,6 +546,8 @@ class SyncService:
         Perform initial server setup sync combining full data sync
         and full activity log pull.
         """
+        logging.info("[INFO] Starting Initial Sync")
+
         import time
 
         start_time = time.time()
@@ -590,7 +596,7 @@ class SyncService:
                 log_data=result.to_dict(),
             )
 
-            logging.error("[INFO] Initial Sync Complete")
+            logging.info("[INFO] Initial Sync Complete")
 
             return result
 
@@ -621,6 +627,9 @@ class SyncService:
         Perform periodic sync: full metadata sync (users/libraries/items),
         incremental activity log sync (if marker exists), and refresh play statistics.
         """
+
+        logging.info("[INFO] Starting Periodic Sync")
+
         start_time = time.time()
         errors: List[str] = []
 
@@ -671,7 +680,7 @@ class SyncService:
                 log_data=result.to_dict(),
             )
 
-            logging.error("[INFO] Periodic Sync Complete")
+            logging.info("[INFO] Periodic Sync Complete")
 
             return result
 

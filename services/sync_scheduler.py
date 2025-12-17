@@ -3,6 +3,7 @@ Background scheduler that runs periodic sync operations.
 """
 
 from __future__ import annotations
+import logging
 import threading
 
 class SyncScheduler:
@@ -31,31 +32,25 @@ class SyncScheduler:
             daemon=True
         )
         self._thread.start()
-        print(
-            f"SyncScheduler started "
-            f"(interval: {self.interval_seconds}s)"
-        )
 
     def stop(self) -> None:
         """Stop the background sync thread."""
         self._running = False
         if self._thread:
             self._thread.join(timeout=5)
-        print("SyncScheduler stopped")
+        logging.info("[INFO] SyncScheduler stopped")
 
     def _run_loop(self) -> None:
         import time
-        import logging
         import traceback
 
-        log = logging.getLogger(__name__)
-        log.error("[INFO] SyncScheduler loop starting (interval=%s)", self.interval_seconds)
+        logging.info("[INFO] SyncScheduler loop starting (interval=%s)", self.interval_seconds)
 
         while self._running:
             try:
                 self.sync_service.sync_periodic()
             except Exception:
-                log.error("[ERROR] Periodic sync failed")
+                logging.error("[ERROR] Periodic sync failed")
                 traceback.print_exc()
 
             total = float(self.interval_seconds or 0)

@@ -393,7 +393,7 @@ class Repository:
                     return settings.last_activity_log_sync
                 return None
         except Exception:
-            logging.getLogger(__name__).exception("Failed to read last_activity_log_sync")
+            logging.error("[ERROR] Failed to read last_activity_log_sync")
             return None
 
     def get_latest_sync_task(
