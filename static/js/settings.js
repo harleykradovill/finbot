@@ -510,10 +510,13 @@ function maskKey(key) { return jf_helpers.maskKey(key); }
 
       logs.forEach(l => {
         const li = document.createElement('li');
-        li.style.padding = '0.6rem';
-        li.style.borderBottom = '1px solid var(--border)';
-        const started = l.started_at ? new Date(Number(l.started_at) * 1000) : null;
 
+        li.classList.add('task-log-item');
+        const res = (l.result || '').toString().toUpperCase();
+        if (res === 'SUCCESS') li.classList.add('success');
+        else if (res === 'FAILED' || res === 'ERROR') li.classList.add('failed');
+
+        const started = l.started_at ? new Date(Number(l.started_at) * 1000) : null;
         li.innerHTML = `
           <div style="display:flex;justify-content:space-between;gap:0.75rem;align-items:center;">
             <div>
@@ -525,7 +528,7 @@ function maskKey(key) { return jf_helpers.maskKey(key); }
             </div>
             <div style="text-align:right;">
               <div style="font-weight:600;color:var(--text);">${humanDuration(Number(l.duration_ms || 0))}</div>
-              <div style="font-size:0.85rem;color:var(--text-muted);">${escapeHtml(l.result || '')}</div>
+              <div class="task-log-result" style="font-size:0.85rem;color:var(--text-muted);">${escapeHtml(l.result || '')}</div>
             </div>
           </div>
         `;

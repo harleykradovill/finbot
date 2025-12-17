@@ -205,13 +205,9 @@
 }
 
 #tasklog-list {
-  max-height: calc(4 * 4.3rem);
+  max-height: calc(20rem);
   overflow-y: auto;
   padding-right: 0.35rem;
-}
-
-#tasklog-list > li {
-  min-height: 3.6rem;
 }
 
 #tasklog-list::-webkit-scrollbar { width: 10px; }
@@ -220,3 +216,30 @@
   border-radius: 12px;
 }
 #tasklog-list::-webkit-scrollbar-track { background: transparent; }
+
+#tasklog-list > li {
+  background: var(--surface);
+  transition: background-image 220ms ease, background 220ms ease;
+}
+
+#tasklog-list > li.task-log-item.success,
+#tasklog-list > li.task-log-item--success {
+  background-image: linear-gradient(
+    90deg,
+    var(--surface) 0%,
+    rgba(78, 181, 76, 0.08) 100%
+  );
+}
+
+#tasklog-list > li.task-log-item.failed,
+#tasklog-list > li.task-log-item--failed {
+  background-image: linear-gradient(
+    90deg,
+    var(--surface) 0%,
+    rgba(143, 22, 22, 0.08) 100%
+  );
+}
+
+#tasklog-list > li .task-log-result {
+  color: var(--text);
+}
