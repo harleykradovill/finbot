@@ -182,17 +182,6 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
 
         return jsonify(updated), 200
 
-    @app.teardown_appcontext
-    def _dispose_db(_exc: Optional[BaseException]) -> None:
-        try:
-            svc.engine.dispose()
-        except Exception:
-            pass
-        try:
-            repo.engine.dispose()
-        except Exception:
-            pass
-
     @app.get("/api/test-connection")
     def test_connection() -> Response:
         """
