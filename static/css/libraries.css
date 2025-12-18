@@ -1,0 +1,48 @@
+#libraries-chart-group {
+  width: 400px;
+  max-width: 400px;
+  float: left;
+  clear: left;
+  margin-top: 0rem;
+  margin-right: 1rem;
+  margin-left: 0;
+  box-sizing: border-box;
+}
+
+#libraries-chart-group .chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem;
+  box-shadow: none;
+  height: 400px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding-bottom: 3rem;
+}
+
+#libraries-chart-group h1 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+#libraries-chart-group canvas {
+  width: 100%;
+  flex: 1 1 auto;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+@media (max-width: 800px) {
+  #libraries-chart-group {
+    float: none;
+    width: 100%;
+    max-width: 100%;
+    margin-right: 0;
+  }
+}

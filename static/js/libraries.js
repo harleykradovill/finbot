@@ -27,6 +27,10 @@
 
       const libs = Array.isArray(data.data) ? data.data : [];
       renderLibraries(libs);
+
+      if (window.updateLibrariesChart && typeof window.updateLibrariesChart === 'function') {
+        try { window.updateLibrariesChart(libs); } catch (err) { console.error('Chart update failed', err); }
+      }
     } catch (err) {
       console.error('Failed to load libraries', err);
       if (empty) empty.hidden = false;
@@ -99,4 +103,111 @@
   loadLibraries();
 
   setInterval(loadLibraries, 60 * 1000);
+})();
+
+/**
+ * Charts
+ */
+
+(function () {
+  let doughnutChart = null;
+
+  function paletteFor(n) {
+    const base = [
+      '#c3d1dd',
+      '#adbfce',
+      '#98aec0',
+      '#829cb2',
+      '#6d8ca3',
+      '#577b95',
+      '#416b88',
+      '#285b7a',
+      '#004c6d'
+    ];
+    if (!n || n <= 0) return [];
+
+    if (n <= base.length) {
+      const colors = [];
+      for (let i = 0; i < n; i++) {
+        const idx = Math.round((i * (base.length - 1)) / (n - 1));
+        colors.push(base[idx]);
+      }
+      return colors;
+    }
+
+    const colors = [];
+    const hue = 198;
+    const sat = 52;
+    const minL = 32;
+    const maxL = 76;
+    for (let i = 0; i < n; i++) {
+      const t = n === 1 ? 0.5 : i / (n - 1);
+      const l = Math.round(minL + (maxL - minL) * t);
+      colors.push(`hsl(${hue} ${sat}% ${l}%)`);
+    }
+    return colors;
+  }
+
+  async function updateLibrariesChart(libs) {
+    const canvas = document.getElementById('libraries-doughnut');
+    const emptyEl = document.getElementById('libraries-chart-empty');
+    if (!canvas) return;
+
+    const labels = (libs || []).map(l => l.name || '(unnamed)');
+    const data = (libs || []).map(l => Number(l.total_files || 0));
+
+    const total = data.reduce((a,b) => a + b, 0);
+    if (!total) {
+      if (emptyEl) emptyEl.hidden = false;
+      canvas.style.display = 'none';
+      if (doughnutChart) {
+        doughnutChart.destroy();
+        doughnutChart = null;
+      }
+      return;
+    }
+
+    if (emptyEl) emptyEl.hidden = true;
+    canvas.style.display = '';
+
+    const bgColors = paletteFor(labels.length);
+    const borderColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--border') || '#333';
+    const textColor = getComputedStyle(document.documentElement)
+      .getPropertyValue('--text') || '#f0f0f0';
+
+    const ctx = canvas.getContext('2d');
+
+    if (doughnutChart) doughnutChart.destroy();
+
+    doughnutChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: bgColors,
+          borderColor: Array(labels.length).fill(borderColor.trim()),
+          borderWidth: 1,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: textColor.trim() || '#fff', boxWidth: 12, padding: 8 }
+          },
+          tooltip: {
+            bodyColor: textColor.trim() || '#fff',
+            titleColor: textColor.trim() || '#fff',
+            backgroundColor: getComputedStyle(document.documentElement)
+              .getPropertyValue('--surface') || '#121212'
+          }
+        }
+      }
+    });
+  }
+  window.updateLibrariesChart = updateLibrariesChart;
 })();
