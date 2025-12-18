@@ -236,13 +236,25 @@ class Repository:
         now = int(time.time())
         processed = 0
         with self._session() as session:
+            jf_ids = [
+                d.get("jellyfin_id") for d in item_dicts if d.get("jellyfin_id")
+            ]
+            existing = {}
+            if jf_ids:
+                rows = (
+                    session.query(Item)
+                    .filter(Item.jellyfin_id.in_(jf_ids))
+                    .all()
+                )
+                existing = {r.jellyfin_id: r for r in rows}
+
             to_add: List[Item] = []
             for data in item_dicts:
                 jf_id = data.get("jellyfin_id")
                 if not jf_id:
                     continue
 
-                item = session.query(Item).filter_by(jellyfin_id=jf_id).first()
+                item = existing.get(jf_id)
                 if item:
                     item.parent_id = data.get("parent_id", item.parent_id)
                     item.name = data.get("name", item.name)
@@ -251,22 +263,28 @@ class Repository:
                     item.updated_at = now
 
                     try:
-                        item.runtime_seconds = int(data.get("runtime_seconds", item.runtime_seconds or 0))
+                        item.runtime_seconds = int(
+                            data.get("runtime_seconds", item.runtime_seconds or 0)
+                        )
                     except Exception:
                         pass
+
                     try:
-                        item.size_bytes = int(data.get("size_bytes", item.size_bytes or 0))
+                        item.size_bytes = int(
+                            data.get("size_bytes", item.size_bytes or 0)
+                        )
                     except Exception:
                         pass
                 else:
                     try:
-                        runtime = int(data.get("runtime_seconds") or 0)
+                        runtime = int(data.get("runtime_seconds", 0))
                     except Exception:
                         runtime = 0
+
                     try:
-                        sizeb = int(data.get("size_bytes") or 0)
+                        size = int(data.get("size_bytes", 0))
                     except Exception:
-                        sizeb = 0
+                        size = 0
 
                     item = Item(
                         jellyfin_id=jf_id,
@@ -274,12 +292,11 @@ class Repository:
                         parent_id=data.get("parent_id"),
                         name=data.get("name", "Unknown"),
                         type=data.get("type"),
-                        play_count=0,
+                        runtime_seconds=runtime,
+                        size_bytes=size,
                         archived=False,
                         created_at=now,
                         updated_at=now,
-                        runtime_seconds=runtime,
-                        size_bytes=sizeb,
                     )
                     to_add.append(item)
 
