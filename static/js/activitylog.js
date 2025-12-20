@@ -128,7 +128,6 @@
       btn.dataset.page = String(p);
       btn.textContent = String(p);
       if (p === current) {
-        btn.setAttribute('aria-current', 'page');
         btn.classList.add('active');
       }
       btn.addEventListener('click', () => gotoPage(p));

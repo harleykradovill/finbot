@@ -11,7 +11,7 @@
   <div class="app-shell">
     {% include '_sidebar.html' %}
     <main id="content" class="content" tabindex="-1" role="main">
-      <section aria-label="Library statistics" class="hero" style="max-width:1200px;margin:1.5rem auto;">
+      <section class="hero" style="max-width:1200px;margin:1.5rem auto;">
         <h1 style="margin:0 0 0.5rem 0;">Libraries</h1>
         <p class="subtitle" style="margin:0 0 1rem 0;color:var(--text-muted);">
           Per-library media totals and playback summary.
@@ -22,7 +22,7 @@
         </div>
 
         <div id="libraries-container" hidden>
-          <table id="libraries-table" class="table" aria-label="Libraries table" style="width:100%;border-collapse:collapse;">
+          <table id="libraries-table" class="table" style="width:100%;border-collapse:collapse;">
             <thead>
               <tr>
                 <th style="text-align:left;padding:0.5rem">Name</th>
@@ -40,23 +40,21 @@
         </div>
       </section>
       <div id="libraries-chart-group">
-          <div class="chart-card">
-            <h1>Files</h1>
-            <canvas id="libraries-doughnut" width="360" height="360" aria-label="Doughnut chart showing files per library" role="img"></canvas>
+        <div class="chart-card">
+          <h1>Files</h1>
+          <canvas id="libraries-doughnut" width="360" height="360" role="img"></canvas>
 
-            <div id="libraries-chart-empty" class="settings-placeholder" hidden">
-              <p>No data to display.</p>
-            </div>
+          <div id="libraries-chart-empty" class="settings-placeholder" hidden">
+            <p>No data to display.</p>
           </div>
         </div>
+      </div>
     </main>
   </div>
 
   <div id="toast-container"
        class="toast-container"
-       role="status"
-       aria-live="polite"
-       aria-atomic="true"></div>
+       role="status"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="../static/js/libraries.js"></script>

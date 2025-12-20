@@ -1,5 +1,5 @@
-<aside class="sidebar" role="navigation" aria-label="Primary">
-  <a class="brand sidebar-brand" href="/" aria-label="Borealis Home">
+<aside class="sidebar" role="navigation">
+  <a class="brand sidebar-brand" href="/">
     <img src="{{ url_for('assets', filename='images/borealis_small.png') }}"
          alt="Borealis logo" class="brand-logo">
     <span class="brand-text">Borealis</span>
@@ -13,40 +13,35 @@
   {% set is_settings = request.path == url_for('settings') %}
   {% set is_first_start = request.path == url_for('first_start') %}
 
-  <ul class="sidebar-links" role="menu" aria-label="Main links">
+  <ul class="sidebar-links" role="menu">
     <li role="none">
       <a role="menuitem"
          href="/"
          class="{{ 'active' if is_home else '' }}"
-         {% if is_home %}aria-current="page"{% endif %}
          data-path="{{ url_for('index') }}">Home</a>
     </li>
     <li role="none">
       <a role="menuitem"
          href="/users"
          class="{{ 'active' if is_users else '' }}"
-         {% if is_users %}aria-current="page"{% endif %}
          data-path="{{ url_for('users') }}">Users</a>
     </li>
     <li role="none">
       <a role="menuitem"
          href="/libraries"
          class="{{ 'active' if is_libraries else '' }}"
-         {% if is_libraries %}aria-current="page"{% endif %}
          data-path="{{ url_for('libraries') }}">Libraries</a>
     </li>
     <li role="none">
       <a role="menuitem"
          href="/activitylog"
          class="{{ 'active' if is_activitylog else '' }}"
-         {% if is_activitylog %}aria-current="page"{% endif %}
          data-path="{{ url_for('activitylog') }}">Activity Log</a>
     </li>
     <li role="none">
       <a role="menuitem"
          href="/settings"
          class="{{ 'active' if is_settings else '' }}"
-         {% if is_settings %}aria-current="page"{% endif %}
          data-path="{{ url_for('settings') }}">Settings</a>
     </li>
   </ul>

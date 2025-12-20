@@ -9,13 +9,13 @@
 </head>
 <body>
   <main id="content" class="content" tabindex="-1">
-    <section class="first-start" aria-label="Initial setup">
+    <section class="first-start">
       <div class="first-start-placeholder" style="margin-bottom:1rem">
         <h1 class="placeholder-title">Welcome to Borealis</h1>
         <p>Before you can use Borealis please select preferences and add your Jellyfin server.</p>
       </div>
 
-      <form id="first-start-form" class="first-start-form" aria-label="First start setup">
+      <form id="first-start-form" class="first-start-form">
         <div class="form-grid">
           <div class="form-field">
             <label for="hour-format">Hour Format</label>
@@ -33,7 +33,7 @@
           </div>
         </div>
 
-        <fieldset aria-label="Jellyfin server" class="jf-server-fieldset" style="margin-top:1rem" id="server-box">
+        <fieldset class="jf-server-fieldset" style="margin-top:1rem" id="server-box">
           <legend>Jellyfin Server</legend>
 
           <div id="jf-first-no-server" class="jf-server-container">
@@ -56,13 +56,13 @@
 
             <div class="modal-actions" style="grid-column: 1 / -1;">
               <button type="button" id="jf-first-test-btn" class="btn">Test Connection</button>
-              <button type="submit" id="jf-first-add-btn" class="btn" disabled aria-disabled="true">Add Server & Continue</button>
+              <button type="submit" id="jf-first-add-btn" class="btn">Add Server & Continue</button>
             </div>
           </div>
         </fieldset>
       </form>
 
-      <div id="jf-first-sync" class="jf-sync-info" hidden role="status" aria-live="polite" aria-atomic="true">
+      <div id="jf-first-sync" class="jf-sync-info" hidden role="status">
             <div class="jf-sync-spinner"></div>
             <p id="jf-first-sync-text">Performing initial sync with Jellyfin.</>
           </div>
@@ -72,9 +72,7 @@
 
   <div id="toast-container"
        class="toast-container"
-       role="status"
-       aria-live="polite"
-       aria-atomic="true"></div>
+       role="status"></div>
 
   <script src="../static/js/first_start.js"></script>
 </body>

@@ -13,32 +13,32 @@
     <main id="content" class="content" tabindex="-1">
       {% block content %}{% endblock %}
 
-      <section class="settings-shell" aria-label="Settings">
-        <div class="settings-container" role="tablist" aria-orientation="vertical">
-          <nav class="settings-nav" aria-label="Sections">
-            <a id="general-tab" href="#general" class="settings-tab active" role="tab" aria-selected="true" aria-controls="general" tabindex="0">
+      <section class="settings-shell">
+        <div class="settings-container" role="tablist">
+          <nav class="settings-nav">
+            <a id="general-tab" href="#general" class="settings-tab active" role="tab" tabindex="0">
               General
             </a>
-            <a id="jellyfin-tab" href="#jellyfin" class="settings-tab" role="tab" aria-selected="false" aria-controls="jellyfin" tabindex="-1">
+            <a id="jellyfin-tab" href="#jellyfin" class="settings-tab" role="tab" tabindex="-1">
               Jellyfin
             </a>
-            <a id="libraries-tab" href="#libraries" class="settings-tab" role="tab" aria-selected="false" aria-controls="libraries" tabindex="-1">
+            <a id="libraries-tab" href="#libraries" class="settings-tab" role="tab" tabindex="-1">
               Libraries
             </a>
-            <a id="task-log-tab" href="#tasklog" class="settings-tab" role="tab" aria-selected="false" aria-controls="tasklog" tabindex="-1">
+            <a id="task-log-tab" href="#tasklog" class="settings-tab" role="tab"tabindex="-1">
               Task Log
             </a>
-            <a id="about-tab" href="#about" class="settings-tab" role="tab" aria-selected="false" aria-controls="about" tabindex="-1">
+            <a id="about-tab" href="#about" class="settings-tab" role="tab" tabindex="-1">
               About
             </a>
           </nav>
 
-          <div id="general" class="settings-content" role="tabpanel" aria-labelledby="general-tab">
+          <div id="general" class="settings-content" role="tabpanel">
             <div class="settings-placeholder">
               <h2 class="placeholder-title">General</h2>
             </div>
 
-            <form class="settings-form" aria-label="General Settings">
+            <form class="settings-form">
               <div class="form-field">
                 <label for="hour-format">Hour Format</label>
                 <select id="hour-format" name="hour_format">
@@ -65,12 +65,12 @@
             </form>
           </div>
 
-          <div class="settings-content" role="tabpanel" id="jellyfin" aria-labelledby="jellyfin-tab" hidden>
+          <div class="settings-content" role="tabpanel" id="jellyfin" hidden>
             <div class="settings-placeholder">
               <h2 class="placeholder-title">Jellyfin</h2>
             </div>
 
-            <div id="jf-no-server" class="jf-server-container" aria-label="Add Jellyfin Server">
+            <div id="jf-no-server" class="jf-server-container">
               <p>You do not have a server added yet.</p>
               <button id="jf-add-server-btn" class="btn" type="button">
                 Add Server
@@ -104,8 +104,8 @@
             </div>
 
             <div id="jf-add-server-modal" class="modal" hidden>
-              <div class="modal-inner" role="dialog" aria-modal="true" aria-label="Add Jellyfin Server">
-                <button id="jf-modal-close" class="modal-close" aria-label="Close">×</button>
+              <div class="modal-inner" role="dialog">
+                <button id="jf-modal-close" class="modal-close">×</button>
                 <form id="jf-modal-form" class="modal-form">
                   <div class="form-field" style="grid-column: 1 / -1;">
                     <label for="jf-modal-host">Host</label>
@@ -138,40 +138,40 @@
             </div>
           </div>
 
-          <div class="settings-content" role="tabpanel" id="libraries" aria-labelledby="libraries-tab" hidden>
+          <div class="settings-content" role="tabpanel" id="libraries" hidden>
           <div class="settings-placeholder">
             <h2 class="placeholder-title">Libraries</h2>
           </div>
 
-          <div id="libraries-panel" class="settings-content" role="region" aria-label="Analytics Libraries">
+          <div id="libraries-panel" class="settings-content" role="region">
             <div id="libraries-empty" class="settings-placeholder" hidden>
               <p>No libraries found.</p>
               <p>Fetch libraries from Jellyfin and then manage tracking here.</p>
             </div>
 
-            <ul id="libraries-list" class="libraries-list" aria-labelledby="libraries-help" aria-label="Library items"></ul>
+            <ul id="libraries-list" class="libraries-list"></ul>
           </div>
         </div>
 
-          <div class="settings-content" role="tabpanel" id="tasklog" aria-labelledby="task-log-tab" hidden>
+          <div class="settings-content" role="tabpanel" id="tasklog" hidden>
           <div class="settings-placeholder">
             <h2 class="placeholder-title">Task Log</h2>
           </div>
 
-          <div id="tasklog-panel" class="settings-content" role="region" aria-label="Task Log">
+          <div id="tasklog-panel" class="settings-content" role="region">
             <div id="tasklog-empty" class="settings-placeholder" hidden>
               <p>No task logs found.</p>
             </div>
 
-            <ul id="tasklog-list" class="libraries-list" aria-label="Task log items"></ul>
+            <ul id="tasklog-list" class="libraries-list"></ul>
           </div>
         </div>
 
-          <div class="settings-content" role="tabpanel" id="about" aria-labelledby="about-tab" hidden>
+          <div class="settings-content" role="tabpanel" id="about" hidden>
             <div class="settings-placeholder">
               <h2 class="placeholder-title">About</h2>
             </div>
-            <div class="about-list" aria-label="About Borealis">
+            <div class="about-list">
               <p><strong>Borealis Version:</strong> <span id="borealis-version">0.1.0</span></p>
               <p><strong>Latest Borealis Version:</strong> <span id="borealis-latest">0.1.0</span></p>
               <p>
@@ -189,9 +189,7 @@
 
   <div id="toast-container"
        class="toast-container"
-       role="status"
-       aria-live="polite"
-       aria-atomic="true"></div>
+       role="status"></div>
 
   <script src="../static/js/settings.js"></script>
 </body>

@@ -51,7 +51,6 @@
       lastTestOk = false;
       if (addBtn) {
         addBtn.disabled = true;
-        addBtn.setAttribute("aria-disabled", "true");
       }
     });
   });
@@ -73,7 +72,6 @@
 
       if (addBtn) {
         addBtn.disabled = true;
-        addBtn.setAttribute("aria-disabled", "true");
       }
 
       const original = testBtn.textContent;
@@ -92,7 +90,6 @@
         showToast("Connection successful", "success");
         if (addBtn) {
           addBtn.disabled = false;
-          addBtn.removeAttribute("aria-disabled");
           addBtn.focus();
         }
       } else {
@@ -102,7 +99,6 @@
 
         if (addBtn) {
           addBtn.disabled = true;
-          addBtn.setAttribute("aria-disabled", "true");
         }
       }
 

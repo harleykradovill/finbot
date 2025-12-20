@@ -231,7 +231,6 @@ function maskKey(key) { return jf_helpers.maskKey(key); }
     tabs.forEach(t => {
       const isActive = t.getAttribute('href') === `#${id}`;
       t.classList.toggle('active', isActive);
-      t.setAttribute('aria-selected', String(isActive));
       t.setAttribute('tabindex', isActive ? '0' : '-1');
     });
     panels.forEach(p => {
@@ -355,7 +354,6 @@ function maskKey(key) { return jf_helpers.maskKey(key); }
 
       const toggleWrap = document.createElement('label');
       toggleWrap.className = 'switch';
-      toggleWrap.setAttribute('aria-label', `Toggle tracking for ${lib.name}`);
 
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
