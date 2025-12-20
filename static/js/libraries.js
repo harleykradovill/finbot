@@ -110,7 +110,8 @@
  */
 
 (function () {
-  let doughnutChart = null;
+  let filesChart = null;
+  let playsChart = null;
 
   function paletteFor(n) {
     const base = [
@@ -149,45 +150,82 @@
   }
 
   async function updateLibrariesChart(libs) {
-    const canvas = document.getElementById('libraries-doughnut');
-    const emptyEl = document.getElementById('libraries-chart-empty');
-    if (!canvas) return;
+    const filesChartCanvas = document.getElementById('files-doughnut');
+    const playsChartCanvas = document.getElementById('plays-doughnut');
+    const emptyElFiles = document.getElementById('libraries-chart-empty-files');
+    const emptyElPlays = document.getElementById('libraries-chart-empty-plays');
+    if (!filesChartCanvas) return;
+    if (!playsChartCanvas) return;
 
     const labels = (libs || []).map(l => l.name || '(unnamed)');
-    const data = (libs || []).map(l => Number(l.total_files || 0));
+    const filesData = (libs || []).map(l => Number(l.total_files || 0));
+    const playsData = (libs || []).map(l => Number(l.total_plays || 0));
 
-    const total = data.reduce((a,b) => a + b, 0);
-    if (!total) {
-      if (emptyEl) emptyEl.hidden = false;
-      canvas.style.display = 'none';
-      if (doughnutChart) {
-        doughnutChart.destroy();
-        doughnutChart = null;
-      }
+    const totalFiles = filesData.reduce((a,b) => a + b, 0);
+    const totalPlays = playsData.reduce((a,b) => a + b, 0);
+
+    // Files chart
+    if (!totalFiles) {
+      if (emptyElFiles) emptyElFiles.hidden = false;
+      filesChartCanvas.style.display = 'none';
+      if (filesChart) { filesChart.destroy(); filesChart = null; }
+    } else {
+      if (emptyElFiles) emptyElFiles.hidden = true;
+      filesChartCanvas.style.display = '';
+      const bgColors = paletteFor(labels.length);
+      const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border') || '#333';
+      const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text') || '#f0f0f0';
+      const ctx = filesChartCanvas.getContext('2d');
+      if (filesChart) filesChart.destroy();
+      filesChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{
+            data: filesData,
+            backgroundColor: bgColors,
+            borderColor: Array(labels.length).fill(borderColor.trim()),
+            borderWidth: 1,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: textColor.trim() || '#fff', boxWidth: 12, padding: 8 } },
+            tooltip: {
+              bodyColor: textColor.trim() || '#fff',
+              titleColor: textColor.trim() || '#fff',
+              backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface') || '#121212'
+            }
+          }
+        }
+      });
+    }
+
+    // Plays chart
+    if (!totalPlays) {
+      if (emptyElPlays) emptyElPlays.hidden = false;
+      playsChartCanvas.style.display = 'none';
+      if (playsChart) { playsChart.destroy(); playsChart = null; }
       return;
     }
 
-    if (emptyEl) emptyEl.hidden = true;
-    canvas.style.display = '';
-
-    const bgColors = paletteFor(labels.length);
-    const borderColor = getComputedStyle(document.documentElement)
-      .getPropertyValue('--border') || '#333';
-    const textColor = getComputedStyle(document.documentElement)
-      .getPropertyValue('--text') || '#f0f0f0';
-
-    const ctx = canvas.getContext('2d');
-
-    if (doughnutChart) doughnutChart.destroy();
-
-    doughnutChart = new Chart(ctx, {
+    if (emptyElPlays) emptyElPlays.hidden = true;
+    playsChartCanvas.style.display = '';
+    const bgColors2 = paletteFor(labels.length);
+    const borderColor2 = getComputedStyle(document.documentElement).getPropertyValue('--border') || '#333';
+    const textColor2 = getComputedStyle(document.documentElement).getPropertyValue('--text') || '#f0f0f0';
+    const ctx2 = playsChartCanvas.getContext('2d');
+    if (playsChart) playsChart.destroy();
+    playsChart = new Chart(ctx2, {
       type: 'doughnut',
       data: {
         labels,
         datasets: [{
-          data,
-          backgroundColor: bgColors,
-          borderColor: Array(labels.length).fill(borderColor.trim()),
+          data: playsData,
+          backgroundColor: bgColors2,
+          borderColor: Array(labels.length).fill(borderColor2.trim()),
           borderWidth: 1,
         }],
       },
@@ -195,15 +233,11 @@
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { color: textColor.trim() || '#fff', boxWidth: 12, padding: 8 }
-          },
+          legend: { position: 'bottom', labels: { color: textColor2.trim() || '#fff', boxWidth: 12, padding: 8 } },
           tooltip: {
-            bodyColor: textColor.trim() || '#fff',
-            titleColor: textColor.trim() || '#fff',
-            backgroundColor: getComputedStyle(document.documentElement)
-              .getPropertyValue('--surface') || '#121212'
+            bodyColor: textColor2.trim() || '#fff',
+            titleColor: textColor2.trim() || '#fff',
+            backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface') || '#121212'
           }
         }
       }
