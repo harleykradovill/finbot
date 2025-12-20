@@ -3,10 +3,9 @@
 }
 
 .settings-container {
-  max-width: 960px;
+  max-width: 1500px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 240px 1fr;
   gap: 1rem;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -16,8 +15,9 @@
 
 .settings-nav {
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
+  flex-direction: row;
+  gap: 1rem;
+  grid-column: 1 / -1;
 }
 
 .settings-tab {
@@ -48,6 +48,7 @@
   border-radius: 12px;
   min-height: 320px;
   transition: background-color 120ms ease;
+  grid-column: 2 / -1;
 }
 
 .settings-placeholder .placeholder-title {
