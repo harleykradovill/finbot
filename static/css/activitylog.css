@@ -37,14 +37,3 @@
   background-color: #fff;
   border-radius: 12px;
 }
-
-@media (max-width: 720px) {
-  .table thead th,
-  .table tbody tr td {
-    padding: 0.4rem;
-    font-size: 0.92rem;
-  }
-  .pagination {
-    gap: 0.35rem;
-  }
-}

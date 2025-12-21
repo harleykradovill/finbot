@@ -5,15 +5,37 @@
   <title>Borealis</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
 </head>
 <body>
   <div class="app-shell">
     {% include '_sidebar.html' %}
     <main id="content" class="content" tabindex="-1">
-      {% block content %}{% endblock %}
+      <div class="matrix-chart-group">
+            <div class="matrix-card">
+              <h1>Watch History Heatmap</h1>
+              <canvas
+                id="plays-matrix"
+                width="800"
+                height="200"
+                role="img"
+              ></canvas>
+
+              <div
+                id="matrix-chart-empty-files"
+                class="settings-placeholder"
+                hidden
+              >
+                <p>No data to display.</p>
+              </div>
+            </div>
+          </div>
     </main>
   </div>
 
   <script src="../static/js/toast.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@2"></script>
+  <script src="../static/js/index.js"></script>
 </body>
 </html>
