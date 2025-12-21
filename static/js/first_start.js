@@ -1,14 +1,20 @@
 (function () {
-  function showToast(message, kind = "success") {
-    const container = document.getElementById("toast-container");
-    if (!container) return;
-    const el = document.createElement("div");
-    el.className = `toast ${kind}`;
-    el.setAttribute("role", "status");
-    el.textContent = message;
-    container.appendChild(el);
-    setTimeout(() => el.remove(), 5000);
+  function showToast(message, kind = "success", ttl = 5000) {
+  if (window.Toast && typeof window.Toast.showToast === 'function') {
+    return window.Toast.showToast(message, kind, ttl);
   }
+  const container = document.getElementById("toast-container");
+  if (!container) return null;
+  const el = document.createElement("div");
+  el.className = `toast ${kind}`;
+  el.setAttribute("role", "status");
+  el.textContent = message;
+  container.appendChild(el);
+  if (typeof ttl === 'number' && ttl > 0) {
+    setTimeout(() => el.remove(), ttl);
+  }
+  return null;
+}
 
   async function postJson(path, body, method = "POST") {
     try {

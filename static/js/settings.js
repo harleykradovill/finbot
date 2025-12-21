@@ -3,15 +3,11 @@ const jf_helpers = (function () {
     return document.getElementById('toast-container');
   }
 
-  function showToast(message, kind = 'success', ttl = 5000) {
-    const container = getToastContainer();
-    if (!container) return;
-    const el = document.createElement('div');
-    el.className = `toast ${kind}`;
-    el.setAttribute('role', 'status');
-    el.textContent = message;
-    container.appendChild(el);
-    setTimeout(() => el.remove(), ttl);
+  function showToast(message, kind = 'success') {
+  if (window.Toast && typeof window.Toast.showToast === 'function') {
+    return window.Toast.showToast(message, kind, 5000);
+  }
+  return jf_helpers.showToast(message, kind);
   }
 
   async function fetchJson(path, opts = {}) {

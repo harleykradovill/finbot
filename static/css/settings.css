@@ -132,23 +132,11 @@
 }
 
 .libraries-list > li span:first-child {
-  font-weight: 600;
   color: var(--text);
 }
 
 .libraries-list > li span:nth-child(2) {
   color: var(--text-muted);
-}
-
-.libraries-list .btn {
-  background: #f0f0f0;
-  color: #000000;
-  border-radius: 999px;
-  padding: 0.35rem 0.7rem;
-}
-
-.libraries-list .btn:hover {
-  background: #e6e6e6;
 }
 
 /* Server Container */
