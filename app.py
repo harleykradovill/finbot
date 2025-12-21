@@ -126,7 +126,20 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
 
     @app.get("/api/settings")
     def get_settings() -> Response:
-        return jsonify(svc.get()), 200
+        data = svc.get()
+
+        def _mask_key(k):
+            if not k:
+                return None
+            try:
+                if len(k) <= 8:
+                    return "*" * max(4, len(k))
+                return f"{k[:4]}…{k[-4:]}"
+            except Exception:
+                return None
+
+        data["jf_api_key"] = _mask_key(data.get("jf_api_key"))
+        return jsonify(data), 200
 
     @app.put("/api/settings")
     def update_settings() -> Response:
