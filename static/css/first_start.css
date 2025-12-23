@@ -64,7 +64,7 @@
   margin: 1rem;
   padding: 1rem;
   border-radius: 12px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border);
 }
 
@@ -78,14 +78,18 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .jf-sync-spinner {
   width: 24px;
   height: 24px;
-  border: 3px solid rgba(255,255,255,0.1);
+  border: 3px solid rgba(255, 255, 255, 0.1);
   border-top: 3px solid #ffffff;
   border-radius: 50%;
   animation: spin 0.5s linear infinite;

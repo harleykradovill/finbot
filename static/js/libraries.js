@@ -1,17 +1,17 @@
 (function () {
-  const container = document.getElementById('libraries-container');
-  const empty = document.getElementById('libraries-empty');
-  const tbody = document.getElementById('libraries-tbody');
+  const container = document.getElementById("libraries-container");
+  const empty = document.getElementById("libraries-empty");
+  const tbody = document.getElementById("libraries-tbody");
 
   function humanBytes(bytes) {
-    if (!bytes || bytes === 0) return '0 B';
-    const units = ['B','KB','MB','GB','TB'];
+    if (!bytes || bytes === 0) return "0 B";
+    const units = ["B", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${units[i]}`;
   }
 
   function humanTime(seconds) {
-    if (!seconds || seconds === 0) return '0s';
+    if (!seconds || seconds === 0) return "0s";
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
@@ -20,19 +20,26 @@
 
   async function loadLibraries() {
     try {
-      const resp = await fetch('/api/analytics/stats/libraries');
-      if (!resp.ok) throw new Error('Network error');
+      const resp = await fetch("/api/analytics/stats/libraries");
+      if (!resp.ok) throw new Error("Network error");
       const data = await resp.json();
-      if (!data || !data.ok) throw new Error(data?.message || 'API error');
+      if (!data || !data.ok) throw new Error(data?.message || "API error");
 
       const libs = Array.isArray(data.data) ? data.data : [];
       renderLibraries(libs);
 
-      if (window.updateLibrariesChart && typeof window.updateLibrariesChart === 'function') {
-        try { window.updateLibrariesChart(libs); } catch (err) { console.error('Chart update failed', err); }
+      if (
+        window.updateLibrariesChart &&
+        typeof window.updateLibrariesChart === "function"
+      ) {
+        try {
+          window.updateLibrariesChart(libs);
+        } catch (err) {
+          console.error("Chart update failed", err);
+        }
       }
     } catch (err) {
-      console.error('Failed to load libraries', err);
+      console.error("Failed to load libraries", err);
       if (empty) empty.hidden = false;
       if (container) container.hidden = true;
     }
@@ -46,54 +53,54 @@
     }
     empty.hidden = true;
     container.hidden = false;
-    tbody.innerHTML = '';
+    tbody.innerHTML = "";
 
-    libs.forEach(lib => {
-      const tr = document.createElement('tr');
+    libs.forEach((lib) => {
+      const tr = document.createElement("tr");
 
-      const nameTd = document.createElement('td');
-      nameTd.style.padding = '0.5rem';
-      nameTd.textContent = lib.name || '(unnamed)';
+      const nameTd = document.createElement("td");
+      nameTd.style.padding = "0.5rem";
+      nameTd.textContent = lib.name || "(unnamed)";
       tr.appendChild(nameTd);
 
-      const typeTd = document.createElement('td');
-      typeTd.style.padding = '0.5rem';
-      typeTd.textContent = lib.type || '';
+      const typeTd = document.createElement("td");
+      typeTd.style.padding = "0.5rem";
+      typeTd.textContent = lib.type || "";
       tr.appendChild(typeTd);
 
-      const totalTimeTd = document.createElement('td');
-      totalTimeTd.style.padding = '0.5rem';
-      totalTimeTd.style.textAlign = 'right';
+      const totalTimeTd = document.createElement("td");
+      totalTimeTd.style.padding = "0.5rem";
+      totalTimeTd.style.textAlign = "right";
       totalTimeTd.textContent = humanTime(lib.total_time_seconds || 0);
       tr.appendChild(totalTimeTd);
 
-      const filesTd = document.createElement('td');
-      filesTd.style.padding = '0.5rem';
-      filesTd.style.textAlign = 'right';
+      const filesTd = document.createElement("td");
+      filesTd.style.padding = "0.5rem";
+      filesTd.style.textAlign = "right";
       filesTd.textContent = String(lib.total_files || 0);
       tr.appendChild(filesTd);
 
-      const sizeTd = document.createElement('td');
-      sizeTd.style.padding = '0.5rem';
-      sizeTd.style.textAlign = 'right';
+      const sizeTd = document.createElement("td");
+      sizeTd.style.padding = "0.5rem";
+      sizeTd.style.textAlign = "right";
       sizeTd.textContent = humanBytes(lib.size_bytes || 0);
       tr.appendChild(sizeTd);
 
-      const playsTd = document.createElement('td');
-      playsTd.style.padding = '0.5rem';
-      playsTd.style.textAlign = 'right';
+      const playsTd = document.createElement("td");
+      playsTd.style.padding = "0.5rem";
+      playsTd.style.textAlign = "right";
       playsTd.textContent = String(lib.total_plays || 0);
       tr.appendChild(playsTd);
 
-      const playbackTd = document.createElement('td');
-      playbackTd.style.padding = '0.5rem';
-      playbackTd.style.textAlign = 'right';
+      const playbackTd = document.createElement("td");
+      playbackTd.style.padding = "0.5rem";
+      playbackTd.style.textAlign = "right";
       playbackTd.textContent = humanTime(lib.total_playback_seconds || 0);
       tr.appendChild(playbackTd);
 
-      const lastTd = document.createElement('td');
-      lastTd.style.padding = '0.5rem';
-      lastTd.textContent = lib.last_played_item_name || '';
+      const lastTd = document.createElement("td");
+      lastTd.style.padding = "0.5rem";
+      lastTd.textContent = lib.last_played_item_name || "";
       tr.appendChild(lastTd);
 
       tbody.appendChild(tr);
@@ -115,15 +122,15 @@
 
   function paletteFor(n) {
     const base = [
-      '#c3d1dd',
-      '#adbfce',
-      '#98aec0',
-      '#829cb2',
-      '#6d8ca3',
-      '#577b95',
-      '#416b88',
-      '#285b7a',
-      '#004c6d'
+      "#c3d1dd",
+      "#adbfce",
+      "#98aec0",
+      "#829cb2",
+      "#6d8ca3",
+      "#577b95",
+      "#416b88",
+      "#285b7a",
+      "#004c6d",
     ];
     if (!n || n <= 0) return [];
 
@@ -150,97 +157,136 @@
   }
 
   async function updateLibrariesChart(libs) {
-    const filesChartCanvas = document.getElementById('files-doughnut');
-    const playsChartCanvas = document.getElementById('plays-doughnut');
-    const emptyElFiles = document.getElementById('libraries-chart-empty-files');
-    const emptyElPlays = document.getElementById('libraries-chart-empty-plays');
+    const filesChartCanvas = document.getElementById("files-doughnut");
+    const playsChartCanvas = document.getElementById("plays-doughnut");
+    const emptyElFiles = document.getElementById("libraries-chart-empty-files");
+    const emptyElPlays = document.getElementById("libraries-chart-empty-plays");
     if (!filesChartCanvas) return;
     if (!playsChartCanvas) return;
 
-    const labels = (libs || []).map(l => l.name || '(unnamed)');
-    const filesData = (libs || []).map(l => Number(l.total_files || 0));
-    const playsData = (libs || []).map(l => Number(l.total_plays || 0));
+    const labels = (libs || []).map((l) => l.name || "(unnamed)");
+    const filesData = (libs || []).map((l) => Number(l.total_files || 0));
+    const playsData = (libs || []).map((l) => Number(l.total_plays || 0));
 
-    const totalFiles = filesData.reduce((a,b) => a + b, 0);
-    const totalPlays = playsData.reduce((a,b) => a + b, 0);
+    const totalFiles = filesData.reduce((a, b) => a + b, 0);
+    const totalPlays = playsData.reduce((a, b) => a + b, 0);
 
     // Files chart
     if (!totalFiles) {
       if (emptyElFiles) emptyElFiles.hidden = false;
-      filesChartCanvas.style.display = 'none';
-      if (filesChart) { filesChart.destroy(); filesChart = null; }
+      filesChartCanvas.style.display = "none";
+      if (filesChart) {
+        filesChart.destroy();
+        filesChart = null;
+      }
     } else {
       if (emptyElFiles) emptyElFiles.hidden = true;
-      filesChartCanvas.style.display = '';
+      filesChartCanvas.style.display = "";
       const bgColors = paletteFor(labels.length);
-      const borderColor = getComputedStyle(document.documentElement).getPropertyValue('--border') || '#333';
-      const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text') || '#f0f0f0';
-      const ctx = filesChartCanvas.getContext('2d');
+      const borderColor =
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--border"
+        ) || "#333";
+      const textColor =
+        getComputedStyle(document.documentElement).getPropertyValue("--text") ||
+        "#f0f0f0";
+      const ctx = filesChartCanvas.getContext("2d");
       if (filesChart) filesChart.destroy();
       filesChart = new Chart(ctx, {
-        type: 'doughnut',
+        type: "doughnut",
         data: {
           labels,
-          datasets: [{
-            data: filesData,
-            backgroundColor: bgColors,
-            borderColor: Array(labels.length).fill(borderColor.trim()),
-            borderWidth: 1,
-          }],
+          datasets: [
+            {
+              data: filesData,
+              backgroundColor: bgColors,
+              borderColor: Array(labels.length).fill(borderColor.trim()),
+              borderWidth: 1,
+            },
+          ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { position: 'bottom', labels: { color: textColor.trim() || '#fff', boxWidth: 12, padding: 8 } },
+            legend: {
+              position: "bottom",
+              labels: {
+                color: textColor.trim() || "#fff",
+                boxWidth: 12,
+                padding: 8,
+              },
+            },
             tooltip: {
-              bodyColor: textColor.trim() || '#fff',
-              titleColor: textColor.trim() || '#fff',
-              backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface') || '#121212'
-            }
-          }
-        }
+              bodyColor: textColor.trim() || "#fff",
+              titleColor: textColor.trim() || "#fff",
+              backgroundColor:
+                getComputedStyle(document.documentElement).getPropertyValue(
+                  "--surface"
+                ) || "#121212",
+            },
+          },
+        },
       });
     }
 
     // Plays chart
     if (!totalPlays) {
       if (emptyElPlays) emptyElPlays.hidden = false;
-      playsChartCanvas.style.display = 'none';
-      if (playsChart) { playsChart.destroy(); playsChart = null; }
+      playsChartCanvas.style.display = "none";
+      if (playsChart) {
+        playsChart.destroy();
+        playsChart = null;
+      }
       return;
     }
 
     if (emptyElPlays) emptyElPlays.hidden = true;
-    playsChartCanvas.style.display = '';
+    playsChartCanvas.style.display = "";
     const bgColors2 = paletteFor(labels.length);
-    const borderColor2 = getComputedStyle(document.documentElement).getPropertyValue('--border') || '#333';
-    const textColor2 = getComputedStyle(document.documentElement).getPropertyValue('--text') || '#f0f0f0';
-    const ctx2 = playsChartCanvas.getContext('2d');
+    const borderColor2 =
+      getComputedStyle(document.documentElement).getPropertyValue("--border") ||
+      "#333";
+    const textColor2 =
+      getComputedStyle(document.documentElement).getPropertyValue("--text") ||
+      "#f0f0f0";
+    const ctx2 = playsChartCanvas.getContext("2d");
     if (playsChart) playsChart.destroy();
     playsChart = new Chart(ctx2, {
-      type: 'doughnut',
+      type: "doughnut",
       data: {
         labels,
-        datasets: [{
-          data: playsData,
-          backgroundColor: bgColors2,
-          borderColor: Array(labels.length).fill(borderColor2.trim()),
-          borderWidth: 1,
-        }],
+        datasets: [
+          {
+            data: playsData,
+            backgroundColor: bgColors2,
+            borderColor: Array(labels.length).fill(borderColor2.trim()),
+            borderWidth: 1,
+          },
+        ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { position: 'bottom', labels: { color: textColor2.trim() || '#fff', boxWidth: 12, padding: 8 } },
+          legend: {
+            position: "bottom",
+            labels: {
+              color: textColor2.trim() || "#fff",
+              boxWidth: 12,
+              padding: 8,
+            },
+          },
           tooltip: {
-            bodyColor: textColor2.trim() || '#fff',
-            titleColor: textColor2.trim() || '#fff',
-            backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface') || '#121212'
-          }
-        }
-      }
+            bodyColor: textColor2.trim() || "#fff",
+            titleColor: textColor2.trim() || "#fff",
+            backgroundColor:
+              getComputedStyle(document.documentElement).getPropertyValue(
+                "--surface"
+              ) || "#121212",
+          },
+        },
+      },
     });
   }
   window.updateLibrariesChart = updateLibrariesChart;

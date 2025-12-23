@@ -6,7 +6,7 @@
 }
 
 .table tbody tr td {
-  border-bottom: 1px solid rgba(0,0,0,0.03);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
   color: var(--text);
   vertical-align: middle;
   white-space: nowrap;
@@ -15,7 +15,7 @@
 }
 
 .table tbody tr:hover td {
-  background: rgba(0,0,0,0.02);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .pagination {

@@ -1,20 +1,20 @@
 (function () {
   function showToast(message, kind = "success", ttl = 5000) {
-  if (window.Toast && typeof window.Toast.showToast === 'function') {
-    return window.Toast.showToast(message, kind, ttl);
+    if (window.Toast && typeof window.Toast.showToast === "function") {
+      return window.Toast.showToast(message, kind, ttl);
+    }
+    const container = document.getElementById("toast-container");
+    if (!container) return null;
+    const el = document.createElement("div");
+    el.className = `toast ${kind}`;
+    el.setAttribute("role", "status");
+    el.textContent = message;
+    container.appendChild(el);
+    if (typeof ttl === "number" && ttl > 0) {
+      setTimeout(() => el.remove(), ttl);
+    }
+    return null;
   }
-  const container = document.getElementById("toast-container");
-  if (!container) return null;
-  const el = document.createElement("div");
-  el.className = `toast ${kind}`;
-  el.setAttribute("role", "status");
-  el.textContent = message;
-  container.appendChild(el);
-  if (typeof ttl === 'number' && ttl > 0) {
-    setTimeout(() => el.remove(), ttl);
-  }
-  return null;
-}
 
   async function postJson(path, body, method = "POST") {
     try {
@@ -100,7 +100,8 @@
         }
       } else {
         lastTestOk = false;
-        const msg = result?.message || `Failed (status: ${result?.status ?? "n/a"})`;
+        const msg =
+          result?.message || `Failed (status: ${result?.status ?? "n/a"})`;
         showToast(msg, "error");
 
         if (addBtn) {
@@ -120,8 +121,8 @@
       const host = (hostInput?.value || "").trim();
       const port = (portInput?.value || "").trim();
       const apiKey = (keyInput?.value || "").trim();
-      const hourFormat = (document.getElementById("hour-format")?.value || "12")
-      const language = (document.getElementById("language")?.value || "en");
+      const hourFormat = document.getElementById("hour-format")?.value || "12";
+      const language = document.getElementById("language")?.value || "en";
 
       if (!host || !port || !apiKey) {
         showToast("Please fill in host, port and API key", "error");
@@ -129,7 +130,10 @@
       }
 
       if (!lastTestOk) {
-        showToast("Please test the connection and ensure it's successful before adding the server", "error");
+        showToast(
+          "Please test the connection and ensure it's successful before adding the server",
+          "error"
+        );
         return;
       }
 
@@ -149,7 +153,7 @@
           jf_port: port,
           jf_api_key: apiKey,
           hour_format: hourFormat,
-          language: language
+          language: language,
         }),
       });
 
@@ -173,8 +177,8 @@
         const syncInfo = document.querySelector(".jf-sync-info");
         const syncText = document.getElementById("jf-first-sync-text");
         const placeholder = document.querySelector(".first-start-placeholder");
-        const serverBox = document.getElementById("server-box")
-        const firstStartForm = document.querySelector(".form-grid")
+        const serverBox = document.getElementById("server-box");
+        const firstStartForm = document.querySelector(".form-grid");
 
         if (placeholder) placeholder.hidden = true;
         if (form) form.hidden = true;
@@ -189,7 +193,9 @@
 
         async function pollProgress() {
           try {
-            const r = await fetch("/api/analytics/server/sync-progress", { cache: "no-store" });
+            const r = await fetch("/api/analytics/server/sync-progress", {
+              cache: "no-store",
+            });
             if (!r.ok) throw new Error("Network");
             const j = await r.json();
             if (!j || !j.ok) throw new Error(j?.message || "Bad response");
@@ -197,13 +203,20 @@
             const syncing = Boolean(j.syncing);
 
             if (!syncing) {
-              setTimeout(() => { window.location.href = "/"; }, 800);
+              setTimeout(() => {
+                window.location.href = "/";
+              }, 800);
               return;
             }
 
             if (Date.now() - startTs > TIMEOUT_MS) {
-              showToast("Initial sync is taking longer than expected. You can continue to the app; background sync will finish automatically.", "error");
-              setTimeout(() => { window.location.href = "/"; }, 1200);
+              showToast(
+                "Initial sync is taking longer than expected. You can continue to the app; background sync will finish automatically.",
+                "error"
+              );
+              setTimeout(() => {
+                window.location.href = "/";
+              }, 1200);
               return;
             }
 
@@ -212,7 +225,10 @@
           } catch (err) {
             console.error("Sync progress fetch error", err);
             if (Date.now() - startTs > TIMEOUT_MS) {
-              showToast("Unable to determine sync progress - continuing", "error");
+              showToast(
+                "Unable to determine sync progress - continuing",
+                "error"
+              );
               window.location.href = "/";
               return;
             }

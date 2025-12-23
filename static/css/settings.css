@@ -96,7 +96,7 @@
   padding: 0.35rem 0.65rem;
   line-height: 0.8;
   transition: background-color 120ms ease, border-color 120ms ease,
-              box-shadow 120ms ease, color 120ms ease;
+    box-shadow 120ms ease, color 120ms ease;
 }
 
 .about-list a:focus {
@@ -172,7 +172,7 @@
   font-size: 0.9rem;
   color: var(--text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-               "Liberation Mono", "Courier New", monospace;
+    "Liberation Mono", "Courier New", monospace;
   letter-spacing: 0.15px;
 }
 
@@ -189,12 +189,16 @@
   padding-right: 0.35rem;
 }
 
-#tasklog-list::-webkit-scrollbar { width: 10px; }
+#tasklog-list::-webkit-scrollbar {
+  width: 10px;
+}
 #tasklog-list::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 12px;
 }
-#tasklog-list::-webkit-scrollbar-track { background: transparent; }
+#tasklog-list::-webkit-scrollbar-track {
+  background: transparent;
+}
 
 #tasklog-list > li {
   background: var(--surface);
