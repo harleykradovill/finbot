@@ -26,14 +26,14 @@
 .pagination .btn {
   padding: 0.35rem 0.6rem;
   font-size: 0.95rem;
-  color: #fff;
-  background-color: #222;
+  color: var(--white);
+  background-color: var(--surface);
 }
 
 .pagination .btn.active,
 .pagination .btn[aria-current="page"] {
   background: var(--focus);
-  color: #000;
-  background-color: #fff;
+  color: var(--black);
+  background-color: var(--white);
   border-radius: 12px;
 }

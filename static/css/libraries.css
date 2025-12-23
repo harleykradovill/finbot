@@ -15,7 +15,7 @@
 }
 
 .libraries-chart-group .chart-card {
-  background: var(--surface);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.75rem;
@@ -60,7 +60,7 @@
 }
 
 .library-card {
-  background: #1a1a1a;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1rem;

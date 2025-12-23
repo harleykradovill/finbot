@@ -33,21 +33,18 @@
 }
 
 .settings-tab:hover {
-  background: #1a1a1a;
-  color: var(--accent);
+  background: var(--surface);
 }
 
 .settings-tab.active {
-  background: #f0f0f0;
-  color: #000000;
-  border-color: #e6e6e6;
+  background: var(--white);
+  color: var(--black);
 }
 
 .settings-content {
-  background: var(--surface);
+  background: var(--bg);
   border-radius: 12px;
   min-height: 320px;
-  transition: background-color 120ms ease;
   grid-column: 2 / -1;
 }
 
@@ -89,19 +86,16 @@
   align-items: center;
   gap: 0.4rem;
   text-decoration: none;
-  color: #000;
-  background: #f0f0f0;
-  border: 1px solid #e6e6e6;
+  color: var(--black);
+  background: var(--white);
   border-radius: 999px;
   padding: 0.35rem 0.65rem;
   line-height: 0.8;
-  transition: background-color 120ms ease, border-color 120ms ease,
-    box-shadow 120ms ease, color 120ms ease;
 }
 
 .about-list a:focus {
   outline: none;
-  border-color: var(--focus);
+  border-color: var(--border);
   box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.35);
 }
 
@@ -125,7 +119,7 @@
   grid-template-columns: 1fr auto auto;
   gap: 0.6rem;
   align-items: center;
-  background: #1a1a1a;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 0.6rem 0.8rem;
@@ -145,7 +139,7 @@
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
-  background: #1a1a1a;
+  background: var(--surface);
   position: relative;
 }
 
@@ -176,13 +170,6 @@
   letter-spacing: 0.15px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .settings-tab,
-  .settings-content {
-    transition: none;
-  }
-}
-
 #tasklog-list {
   max-height: calc(20rem);
   overflow-y: auto;
@@ -201,15 +188,14 @@
 }
 
 #tasklog-list > li {
-  background: var(--surface);
-  transition: background-image 220ms ease, background 220ms ease;
+  background: var(--bg);
 }
 
 #tasklog-list > li.task-log-item.success,
 #tasklog-list > li.task-log-item--success {
   background-image: linear-gradient(
     90deg,
-    var(--surface) 0%,
+    var(--bg) 0%,
     rgba(78, 181, 76, 0.08) 100%
   );
 }
@@ -218,7 +204,7 @@
 #tasklog-list > li.task-log-item--failed {
   background-image: linear-gradient(
     90deg,
-    var(--surface) 0%,
+    var(--bg) 0%,
     rgba(143, 22, 22, 0.08) 100%
   );
 }

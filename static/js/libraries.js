@@ -223,9 +223,8 @@
         getComputedStyle(document.documentElement).getPropertyValue("--text") ||
         "#f0f0f0";
       const bgColor =
-        getComputedStyle(document.documentElement).getPropertyValue(
-          "--surface"
-        ) || "#121212";
+        getComputedStyle(document.documentElement).getPropertyValue("--bg") ||
+        "#121212";
 
       const colors = paletteFor(libs.length);
       const datasets = libs.map((lib, idx) => {
@@ -369,7 +368,7 @@
               titleColor: textColor.trim() || "#fff",
               backgroundColor:
                 getComputedStyle(document.documentElement).getPropertyValue(
-                  "--surface"
+                  "--bg"
                 ) || "#121212",
             },
           },
@@ -429,7 +428,7 @@
             titleColor: textColor2.trim() || "#fff",
             backgroundColor:
               getComputedStyle(document.documentElement).getPropertyValue(
-                "--surface"
+                "--bg"
               ) || "#121212",
           },
         },

@@ -2,7 +2,7 @@
   max-width: 920px;
   margin: 4rem auto;
   padding: 1.5rem;
-  background: #0b0b0b;
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 12px;
 }
@@ -87,7 +87,7 @@
   width: 24px;
   height: 24px;
   border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top: 3px solid #ffffff;
+  border-top: 3px solid var(--white);
   border-radius: 50%;
   animation: spin 0.5s linear infinite;
   margin: 0 auto 0.5rem;
