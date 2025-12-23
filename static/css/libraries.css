@@ -41,3 +41,76 @@
   display: block;
   margin: 0 auto;
 }
+
+#libraries-container {
+  display: block;
+}
+
+.libraries-scroll-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.libraries-cards {
+  display: flex;
+  gap: 1rem;
+  min-width: min-content;
+  justify-content: space-between;
+}
+
+.library-card {
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  flex: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.library-card-attr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.library-card-attr-label {
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.library-card-attr-value {
+  color: var(--text);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.library-card-attr-value.name {
+  font-weight: 600;
+  color: var(--accent);
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.libraries-scroll-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.libraries-scroll-container::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 12px;
+}
+
+.libraries-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}

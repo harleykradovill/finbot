@@ -1,7 +1,7 @@
 (function () {
   const container = document.getElementById("libraries-container");
   const empty = document.getElementById("libraries-empty");
-  const tbody = document.getElementById("libraries-tbody");
+  const cardsContainer = document.getElementById("libraries-cards");
 
   function humanBytes(bytes) {
     if (!bytes || bytes === 0) return "0 B";
@@ -53,57 +53,51 @@
     }
     empty.hidden = true;
     container.hidden = false;
-    tbody.innerHTML = "";
+    cardsContainer.innerHTML = "";
 
     libs.forEach((lib) => {
-      const tr = document.createElement("tr");
+      const card = document.createElement("div");
+      card.className = "library-card";
 
-      const nameTd = document.createElement("td");
-      nameTd.style.padding = "0.5rem";
-      nameTd.textContent = lib.name || "(unnamed)";
-      tr.appendChild(nameTd);
+      const typeText =
+        lib.type === "movies"
+          ? "Movies"
+          : lib.type === "tvshows"
+          ? "TV Shows"
+          : lib.type || "";
 
-      const typeTd = document.createElement("td");
-      typeTd.style.padding = "0.5rem";
-      typeTd.textContent = lib.type || "";
-      tr.appendChild(typeTd);
+      const attrs = [
+        { label: "Name", value: lib.name || "(unnamed)", isName: true },
+        { label: "Type", value: typeText },
+        { label: "Total Time", value: humanTime(lib.total_time_seconds || 0) },
+        { label: "Size", value: humanBytes(lib.size_bytes || 0) },
+        {
+          label: "Total Playback",
+          value: humanTime(lib.total_playback_seconds || 0),
+        },
+        { label: "Last Played", value: lib.last_played_item_name || "—" },
+      ];
 
-      const totalTimeTd = document.createElement("td");
-      totalTimeTd.style.padding = "0.5rem";
-      totalTimeTd.style.textAlign = "right";
-      totalTimeTd.textContent = humanTime(lib.total_time_seconds || 0);
-      tr.appendChild(totalTimeTd);
+      attrs.forEach((attr) => {
+        const div = document.createElement("div");
+        div.className = "library-card-attr";
 
-      const filesTd = document.createElement("td");
-      filesTd.style.padding = "0.5rem";
-      filesTd.style.textAlign = "right";
-      filesTd.textContent = String(lib.total_files || 0);
-      tr.appendChild(filesTd);
+        const label = document.createElement("span");
+        label.className = "library-card-attr-label";
+        label.textContent = attr.label;
 
-      const sizeTd = document.createElement("td");
-      sizeTd.style.padding = "0.5rem";
-      sizeTd.style.textAlign = "right";
-      sizeTd.textContent = humanBytes(lib.size_bytes || 0);
-      tr.appendChild(sizeTd);
+        const value = document.createElement("span");
+        value.className = `library-card-attr-value ${
+          attr.isName ? "name" : ""
+        }`;
+        value.textContent = attr.value;
 
-      const playsTd = document.createElement("td");
-      playsTd.style.padding = "0.5rem";
-      playsTd.style.textAlign = "right";
-      playsTd.textContent = String(lib.total_plays || 0);
-      tr.appendChild(playsTd);
+        div.appendChild(label);
+        div.appendChild(value);
+        card.appendChild(div);
+      });
 
-      const playbackTd = document.createElement("td");
-      playbackTd.style.padding = "0.5rem";
-      playbackTd.style.textAlign = "right";
-      playbackTd.textContent = humanTime(lib.total_playback_seconds || 0);
-      tr.appendChild(playbackTd);
-
-      const lastTd = document.createElement("td");
-      lastTd.style.padding = "0.5rem";
-      lastTd.textContent = lib.last_played_item_name || "";
-      tr.appendChild(lastTd);
-
-      tbody.appendChild(tr);
+      cardsContainer.appendChild(card);
     });
   }
 
