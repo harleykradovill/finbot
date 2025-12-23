@@ -117,6 +117,7 @@ class Item(Base):
     archived = Column(Boolean, default=False)
     runtime_seconds = Column(Integer, default=0)
     size_bytes = Column(BigInteger, default=0)
+    date_created = Column(BigInteger, nullable=True)
 
     library = relationship("Library", back_populates="items")
 
@@ -127,6 +128,7 @@ class Item(Base):
         Index("idx_item_play_count", "play_count"),
         Index("idx_item_runtime_seconds", "runtime_seconds"),
         Index("idx_item_size_bytes", "size_bytes"),
+        Index("idx_date_created", "date_created")
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -141,6 +143,7 @@ class Item(Base):
             "runtime_seconds": self.runtime_seconds,
             "size_bytes": self.size_bytes,
             "archived": self.archived,
+            "date_created": self.date_created,
         }
 
 

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from typing import Dict, Any, List, Optional
-
+import re
+from datetime import datetime, timezone
+import logging
 
 def map_user(jf_user: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
@@ -78,6 +80,33 @@ def map_libraries(
             results.append(mapped)
     return results
 
+def _parse_jf_date(jf_val) -> int | None:
+    """
+    Parse various Jellyfin DateCreated formats into epoch seconds.
+    Returns None if parsing fails or value is falsy.
+    """
+    if jf_val is None:
+        return None
+    try:
+        if isinstance(jf_val, (int, float)):
+            v = int(jf_val)
+            return int(v // 1000) if v > 1e12 else v
+        s = str(jf_val).strip()
+        m = re.search(r"/Date\((?P<ms>-?\d+)", s)
+        if m:
+            ms = int(m.group("ms"))
+            return int(ms // 1000)
+        if s.isdigit():
+            v = int(s)
+            return int(v // 1000) if v > 1e12 else v
+        if s.endswith("Z"):
+            s = s[:-1] + "+00:00"
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp())
+    except Exception:
+        return None
 
 def map_item(
     jf_item: Dict[str, Any],
@@ -118,6 +147,8 @@ def map_item(
     except Exception:
         size_bytes = 0
 
+    date_created = _parse_jf_date(jf_item.get("DateCreated"))
+
     return {
         "jellyfin_id": jf_id,
         "library_id": library_internal_id,
@@ -126,6 +157,7 @@ def map_item(
         "type": item_type,
         "runtime_seconds": runtime_seconds,
         "size_bytes": size_bytes,
+        "date_created": date_created,
     }
 
 def map_items(

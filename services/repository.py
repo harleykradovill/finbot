@@ -255,7 +255,7 @@ class Repository:
                     item.name = data.get("name", item.name)
                     item.type = data.get("type", item.type)
                     item.archived = False
-                    item.updated_at = now
+                    item.date_created = data.get("date_created", item.date_created)
 
                     try:
                         item.runtime_seconds = int(
@@ -290,6 +290,7 @@ class Repository:
                         runtime_seconds=runtime,
                         size_bytes=size,
                         archived=False,
+                        date_created=data.get("date_created")
                     )
                     to_add.append(item)
 
