@@ -72,15 +72,12 @@ class Repository:
                     user.name = data.get("name", user.name)
                     user.is_admin = data.get("is_admin", user.is_admin)
                     user.archived = False
-                    user.updated_at = now
                 else:
                     user = User(
                         jellyfin_id=jf_id,
                         name=data.get("name", "Unknown"),
                         is_admin=data.get("is_admin", False),
                         archived=False,
-                        created_at=now,
-                        updated_at=now,
                     )
 
                 session.merge(user)
@@ -163,8 +160,6 @@ class Repository:
                         type=data.get("type"),
                         image_url=data.get("image_url"),
                         archived=False,
-                        created_at=now,
-                        updated_at=now,
                     )
                     to_add.append(lib)
 
@@ -295,8 +290,6 @@ class Repository:
                         runtime_seconds=runtime,
                         size_bytes=size,
                         archived=False,
-                        created_at=now,
-                        updated_at=now,
                     )
                     to_add.append(item)
 

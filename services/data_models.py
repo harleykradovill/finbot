@@ -31,8 +31,6 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     total_plays = Column(Integer, default=0)
     archived = Column(Boolean, default=False)
-    created_at = Column(BigInteger, nullable=False)
-    updated_at = Column(BigInteger, nullable=False)
 
     __table_args__ = (
         Index("idx_user_jellyfin_id", "jellyfin_id"),
@@ -48,8 +46,6 @@ class User(Base):
             "is_admin": self.is_admin,
             "total_plays": self.total_plays,
             "archived": self.archived,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
         }
 
 
@@ -67,8 +63,6 @@ class Library(Base):
     tracked = Column(Boolean, default=False)
     total_plays = Column(Integer, default=0)
     archived = Column(Boolean, default=False)
-    created_at = Column(BigInteger, nullable=False)
-    updated_at = Column(BigInteger, nullable=False)
     total_time_seconds = Column(BigInteger, default=0)
     total_files = Column(Integer, default=0)
     size_bytes = Column(BigInteger, default=0)
@@ -100,8 +94,6 @@ class Library(Base):
             "total_playback_seconds": self.total_playback_seconds,
             "last_played_item_name": self.last_played_item_name,
             "archived": self.archived,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
         }
 
 
@@ -123,8 +115,6 @@ class Item(Base):
     type = Column(String(64), nullable=True)
     play_count = Column(Integer, default=0)
     archived = Column(Boolean, default=False)
-    created_at = Column(BigInteger, nullable=False)
-    updated_at = Column(BigInteger, nullable=False)
     runtime_seconds = Column(Integer, default=0)
     size_bytes = Column(BigInteger, default=0)
 
@@ -151,8 +141,6 @@ class Item(Base):
             "runtime_seconds": self.runtime_seconds,
             "size_bytes": self.size_bytes,
             "archived": self.archived,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
         }
 
 

@@ -208,7 +208,5 @@ class StatsAggregator:
                 "item_count": int(lib.total_files or 0),
                 "series_count": series_count,
                 "episode_count": episode_count,
-                "created_at": lib.created_at,
-                "updated_at": lib.updated_at,
             })
         return out
