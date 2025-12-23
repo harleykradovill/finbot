@@ -38,6 +38,17 @@
           console.error("Chart update failed", err);
         }
       }
+
+      if (
+        window.updateItemsAddedChart &&
+        typeof window.updateItemsAddedChart === "function"
+      ) {
+        try {
+          window.updateItemsAddedChart(libs);
+        } catch (err) {
+          console.error("Items added chart update failed", err);
+        }
+      }
     } catch (err) {
       console.error("Failed to load libraries", err);
       if (empty) empty.hidden = false;
@@ -113,6 +124,7 @@
 (function () {
   let filesChart = null;
   let playsChart = null;
+  let itemLineChart = null;
 
   function paletteFor(n) {
     const base = [
@@ -149,6 +161,147 @@
     }
     return colors;
   }
+
+  function generateDateRange(days = 30) {
+    const dates = [];
+    const now = new Date();
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const iso = d.toISOString().slice(0, 10);
+      dates.push(iso);
+    }
+    return dates;
+  }
+
+  function initializeItemsByDatePerLibrary(libraries, dates) {
+    const result = {};
+    libraries.forEach((lib) => {
+      result[lib.jellyfin_id] = {};
+      dates.forEach((date) => {
+        result[lib.jellyfin_id][date] = 0;
+      });
+    });
+    return result;
+  }
+
+  async function updateItemsAddedChart(libs) {
+    const itemLineCanvas = document.getElementById("item-line");
+    if (!itemLineCanvas || !libs || libs.length === 0) return;
+
+    try {
+      const resp = await fetch("/api/analytics/items/added-last-30-days");
+      if (!resp.ok) throw new Error("Network error");
+      const payload = await resp.json();
+      if (!payload || !payload.ok)
+        throw new Error(payload?.message || "API error");
+
+      const data = payload.data || {};
+      const dates = Array.isArray(data.dates)
+        ? data.dates
+        : generateDateRange(30);
+
+      const itemsByDate = initializeItemsByDatePerLibrary(libs, dates);
+
+      const serverLibs = Array.isArray(data.libraries) ? data.libraries : [];
+      serverLibs.forEach((sLib) => {
+        if (!sLib || !sLib.jellyfin_id || !Array.isArray(sLib.counts)) return;
+        const jfId = sLib.jellyfin_id;
+        const counts = sLib.counts;
+        if (!itemsByDate[jfId]) return;
+        for (let i = 0; i < dates.length; i++) {
+          const date = dates[i];
+          itemsByDate[jfId][date] = Number(counts[i] || 0);
+        }
+      });
+
+      const borderColor =
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--border"
+        ) || "#333";
+      const textColor =
+        getComputedStyle(document.documentElement).getPropertyValue("--text") ||
+        "#f0f0f0";
+      const bgColor =
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--surface"
+        ) || "#121212";
+
+      const colors = paletteFor(libs.length);
+      const datasets = libs.map((lib, idx) => {
+        const libData = itemsByDate[lib.jellyfin_id] || {};
+        const values = dates.map((date) => libData[date] || 0);
+
+        return {
+          label: lib.name || "(unnamed)",
+          data: values,
+          borderColor: colors[idx],
+          backgroundColor: colors[idx] + "33",
+          fill: true,
+          tension: 0.3,
+          borderWidth: 2,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          pointBackgroundColor: colors[idx],
+          pointBorderColor: bgColor,
+          pointBorderWidth: 2,
+        };
+      });
+
+      const ctx = itemLineCanvas.getContext("2d");
+      if (itemLineChart) itemLineChart.destroy();
+
+      itemLineChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: dates,
+          datasets,
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                color: textColor.trim() || "#fff",
+                boxWidth: 12,
+                padding: 8,
+                usePointStyle: true,
+              },
+            },
+            tooltip: {
+              bodyColor: textColor.trim() || "#fff",
+              titleColor: textColor.trim() || "#fff",
+              backgroundColor: bgColor || "#121212",
+              borderColor: borderColor.trim() || "#333",
+              borderWidth: 1,
+            },
+          },
+          scales: {
+            x: {
+              grid: { color: borderColor.trim() || "#333", drawBorder: true },
+              ticks: {
+                color: textColor.trim() || "#fff",
+                maxRotation: 45,
+                minRotation: 0,
+              },
+            },
+            y: {
+              beginAtZero: true,
+              grid: { color: borderColor.trim() || "#333", drawBorder: true },
+              ticks: { color: textColor.trim() || "#fff", stepSize: 1 },
+            },
+          },
+        },
+      });
+    } catch (err) {
+      console.error("Failed to load items-added chart data", err);
+      return;
+    }
+  }
+
+  window.updateItemsAddedChart = updateItemsAddedChart;
 
   async function updateLibrariesChart(libs) {
     const filesChartCanvas = document.getElementById("files-doughnut");

@@ -576,6 +576,71 @@ def create_app(test_config: Optional[Dict] = None) -> "Flask":
             }), 200
 
         return jsonify({"ok": True, "data": updated}), 200
+    
+    @app.get("/api/analytics/items/added-last-30-days")
+    def api_analytics_items_added_last_30_days() -> Response:
+        """
+        Return items added per library for the last 30 days.
+        """
+        try:
+            from datetime import datetime, timedelta
+
+            days = 30
+            now = int(time.time())
+            cutoff = now - days * 24 * 60 * 60
+
+            dates = []
+            today = datetime.utcnow().date()
+            for i in range(days - 1, -1, -1):
+                dates.append((today - timedelta(days=i)).isoformat())
+
+            libraries = repo.list_libraries(include_archived=False)
+            id_map = {lib["id"]: lib for lib in libraries}
+
+            counts_by_lib = {}
+            for lib in libraries:
+                counts_by_lib[lib["jellyfin_id"]] = Object = {d: 0 for d in dates}
+
+            from services.data_models import Item
+            with repo._session() as session:
+                rows = (
+                    session.query(Item.jellyfin_id, Item.library_id, Item.date_created)
+                    .filter(Item.date_created != None)
+                    .filter(Item.date_created >= cutoff)
+                    .all()
+                )
+
+                for jellyfin_item_id, library_id, date_created in rows:
+                    try:
+                        ts = int(date_created)
+                    except Exception:
+                        continue
+                    date_str = datetime.utcfromtimestamp(ts).date().isoformat()
+                    lib = id_map.get(library_id)
+                    if not lib:
+                        continue
+                    jf_lib_id = lib["jellyfin_id"]
+                    if date_str in counts_by_lib.get(jf_lib_id, {}):
+                        counts_by_lib[jf_lib_id][date_str] += 1
+
+            payload = {
+                "dates": dates,
+                "libraries": [
+                    {
+                        "jellyfin_id": jf,
+                        "name": next((l["name"] for l in libraries if l["jellyfin_id"] == jf), None),
+                        "counts": [counts_by_lib[jf].get(d, 0) for d in dates],
+                    }
+                    for jf in counts_by_lib.keys()
+                ],
+            }
+
+            return jsonify({"ok": True, "data": payload}), 200
+        except Exception as exc:
+            return jsonify({
+                "ok": False,
+                "message": f"Failed to build items-added data: {str(exc)}"
+            }), 500
 
     @app.post("/api/sync")
     def api_sync() -> Response:
