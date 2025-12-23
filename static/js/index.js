@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
       '#285b7a',
       '#004c6d'
     ];
-    if (!v) return 'rgba(255,255,255,0.03)';
+    if (!v) return '#333';
     const t = Math.min(1, v / Math.max(1, maxV));
     const idx = Math.max(0, Math.min(palette.length - 1, Math.round(t * (palette.length - 1))));
     return palette[idx];
@@ -114,11 +114,11 @@ document.addEventListener('DOMContentLoaded', () => {
         datasets: [{
           data,
           borderWidth: 0,
+          borderRadius: 12,
           backgroundColor: (ctxArg) => {
             const v = ctxArg.raw.v || 0;
             return colorFor(v, maxV);
           },
-          borderColor: 'rgba(0,0,0,0.06)',
           width: ({ chart }) => {
             const areaW = (chart.chartArea || {}).width || canvas.width;
             const areaH = (chart.chartArea || {}).height || canvas.height;
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
               title: () => '',
               label: (ctx) => {
                 const r = ctx.raw;
-                return `${r.date} — ${r.v} plays`;
+                return `${r.date} - ${r.v} plays`;
               }
             }
           }

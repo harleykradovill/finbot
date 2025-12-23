@@ -212,7 +212,7 @@
           } catch (err) {
             console.error("Sync progress fetch error", err);
             if (Date.now() - startTs > TIMEOUT_MS) {
-              showToast("Unable to determine sync progress — continuing", "error");
+              showToast("Unable to determine sync progress - continuing", "error");
               window.location.href = "/";
               return;
             }
