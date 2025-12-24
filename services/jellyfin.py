@@ -23,8 +23,11 @@ class JellyfinClient:
     def _read_settings(self) -> Tuple[str, str, str, str]:
         """
         Read settings and normalize scheme/host.
+
+        :param self: Instance containing the settings provider
+        :returns Tuple[str, str, str, str]: (scheme, host, port, api_token)
         """
-        s = self._settings.get()
+        s = self._settings.get() # Get settings dictionary
         raw_host = (s.get("jf_host") or "").strip()
         raw_port = (s.get("jf_port") or "").strip()
         token = (s.get("jf_api_key") or "").strip()
@@ -32,26 +35,26 @@ class JellyfinClient:
         host = ""
         port = ""
 
-        if not raw_host and not raw_port:
+        if not raw_host and not raw_port: # No connection info provided
             return scheme, host, port, token
 
-        parsed = urlparse(raw_host if "://" in raw_host else f"//{raw_host}", scheme="http")
-        candidate_host = parsed.hostname or ""
-        candidate_port_from_host = parsed.port
+        parsed = urlparse(raw_host if "://" in raw_host else f"//{raw_host}", scheme="http") # Parse host with or without scheme
+        candidate_host = parsed.hostname or "" # Extract hostname
+        candidate_port_from_host = parsed.port # Extract port
 
-        if raw_port:
+        if raw_port: # Explicit port takes priority
             port = raw_port
         elif candidate_port_from_host:
             port = str(candidate_port_from_host)
 
-        if parsed.scheme and parsed.scheme.lower() == "https":
+        if parsed.scheme and parsed.scheme.lower() == "https": 
             scheme = "https"
         elif raw_host.startswith("https://"):
             scheme = "https"
 
         host = candidate_host or raw_host
 
-        if ":" in host:
+        if ":" in host: # Strip remaining port
             host = host.split(":", 1)[0]
 
         host = host.strip().strip("/")
@@ -59,14 +62,14 @@ class JellyfinClient:
         valid = False
         if host:
             try:
-                ipaddress.ip_address(host)
+                ipaddress.ip_address(host) # Accept valid ipv4/ipv6
                 valid = True
             except Exception:
                 HOSTNAME_RE = re.compile(r"^(?=.{1,255}$)([A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?)(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?)*$")
                 if HOSTNAME_RE.match(host):
                     valid = True
 
-        if not valid:
+        if not valid: # Reject invalid host
             return scheme, "", "", token
 
         return scheme, host, port, token
@@ -74,30 +77,36 @@ class JellyfinClient:
     def _build_url(self, path: str) -> Optional[str]:
         """
         Construct a full URL for a given Jellyfin path.
+
+        :param path: API path
+        :returns str | None: Fully URL, or None if config is invalid
         """
-        scheme, host, port, token = self._read_settings()
-        if not host or not port or not port.isdigit() or not token:
+        scheme, host, port, token = self._read_settings() # Load normalized settings
+        if not host or not port or not port.isdigit() or not token: # Missing or invalid connection data
             return None
 
         try:
             pnum = int(port)
-            if pnum < 1 or pnum > 65535:
+            if pnum < 1 or pnum > 65535: # Reject out-of-range ports
                 return None
-        except Exception:
+        except Exception: # Reject non-numeric ports
             return None
 
-        if not path.startswith("/"):
+        if not path.startswith("/"): # Ensure leading slash for URL path
             path = f"/{path}"
 
-        base = f"{scheme}://{host}:{pnum}"
+        base = f"{scheme}://{host}:{pnum}" # Construct scheme/host/port
         return f"{base}{path}"
 
     def _is_transient_error(self, exc: Exception) -> bool:
         """
         Determine if an error is transient and should be retried.
+
+        :param exc: Exception raised during HTTP or network operation
+        :returns bool: True if error is retryable, False otherwise
         """
         if isinstance(exc, HTTPError):
-            return exc.code in (408, 429, 500, 502, 503, 504)
+            return exc.code in (408, 429, 500, 502, 503, 504) # Retryable HTTP status codes
         if isinstance(exc, URLError):
             return True
         return False
@@ -110,16 +119,21 @@ class JellyfinClient:
     ) -> Dict[str, Any]:
         """
         Perform a GET request to Jellyfin.
+
+        :param path: API path to request
+        :param max_retries: Max number of retry attempts
+        :param backoff_base: Base delay (in sec)
+        :returns dict: Result object containing success flag, status code, and payload/error
         """
         url = self._build_url(path)
-        if not url:
+        if not url: # Invalid or incomplete config
             return {
                 "ok": False,
                 "status": 400,
                 "message": "Missing or invalid host/port/token in settings.",
             }
 
-        _, _, _, token = self._read_settings()
+        _, _, _, token = self._read_settings() # Retrieve API auth token
 
         req = Request(url, method="GET")
         req.add_header("X-Emby-Token", token)
@@ -128,21 +142,21 @@ class JellyfinClient:
         last_exception = None
         for attempt in range(max_retries):
             try:
-                with urlopen(req, timeout=5.0) as resp:
+                with urlopen(req, timeout=5.0) as resp: # Execute HTTP request
                     status = getattr(resp, "status", 200)
-                    data = resp.read()
+                    data = resp.read() # Ready response body
                     import json
                     try:
                         parsed = json.loads(data.decode("utf-8"))
                     except Exception:
                         parsed = {}
 
-                    return {
+                    return { # Successful response
                         "ok": 200 <= status < 300,
                         "status": status,
                         "data": parsed,
                     }
-            except HTTPError as he:
+            except HTTPError as he: # Non-retryable HTTP error
                 last_exception = he
                 if not self._is_transient_error(he):
                     return {
@@ -153,7 +167,7 @@ class JellyfinClient:
                             f"{he.reason or 'Unknown'}"
                         ),
                     }
-            except URLError as ue:
+            except URLError as ue: # Non-retryable network error
                 last_exception = ue
                 if not self._is_transient_error(ue):
                     reason = getattr(ue, "reason", "Unknown")
@@ -162,19 +176,19 @@ class JellyfinClient:
                         "status": 0,
                         "message": f"Network error: {reason}",
                     }
-            except Exception as exc:
+            except Exception as exc: # Unhandled exception
                 return {
                     "ok": False,
                     "status": 0,
                     "message": f"Unexpected error: {str(exc)}",
                 }
 
-            if attempt < max_retries - 1:
+            if attempt < max_retries - 1: # Exp backoff before retry
                 delay = backoff_base * (2 ** attempt)
                 time.sleep(delay)
 
         if last_exception:
-            if isinstance(last_exception, HTTPError):
+            if isinstance(last_exception, HTTPError): # Exhausted retries for HTTP error
                 return {
                     "ok": False,
                     "status": last_exception.code,
@@ -184,7 +198,7 @@ class JellyfinClient:
                         f"{last_exception.reason or 'Unknown'}"
                     ),
                 }
-            elif isinstance(last_exception, URLError):
+            elif isinstance(last_exception, URLError): # Exhausted retries for network error
                 reason = getattr(last_exception, "reason", "Unknown")
                 return {
                     "ok": False,
@@ -195,7 +209,7 @@ class JellyfinClient:
                     ),
                 }
 
-        return {
+        return { # Fallback if no exception captured
             "ok": False,
             "status": 0,
             "message": f"Failed after {max_retries} retries",
@@ -228,21 +242,24 @@ class JellyfinClient:
     def library_items(self, library_id: str) -> Dict[str, Any]:
         """
         Returns all items in a library.
+
+        :param library_id: Jellyfin library identifier
+        :returns dict: Resulting object containing success flag, status code, items
         """
-        page_size = 1000
+        page_size = 1000 # Max items per request
         start_index = 0
-        aggregated: List[Dict[str, Any]] = []
-        seen_ids: set = set()
+        aggregated: List[Dict[str, Any]] = [] # Accumulated unique items
+        seen_ids: set = set() # Track processed item IDs
         last_status = 200
 
         while True:
-            path = (
+            path = ( # Build paginated items query
                 f"/Items?ParentId={library_id}&Recursive=true"
                 f"&Fields=MediaSources,DateCreated"
                 f"&Limit={page_size}&StartIndex={start_index}"
             )
             resp = self._get(path)
-            last_status = resp.get("status", last_status)
+            last_status = resp.get("status", last_status) # Update status from response
             if not resp.get("ok"):
                 return resp
             
@@ -253,21 +270,21 @@ class JellyfinClient:
             elif isinstance(data, list):
                 page_items = data
                 total = None
-            else:
+            else: # Unexpected response type
                 page_items = []
                 total = None
 
             new_added = 0
             for it in page_items:
-                jf_id = (it.get("Id") or "").strip()
-                if not jf_id or jf_id in seen_ids:
+                jf_id = (it.get("Id") or "").strip() # Extract item ID
+                if not jf_id or jf_id in seen_ids: # Skip invalid or duplicate items
                     continue
                 seen_ids.add(jf_id)
                 aggregated.append(it)
                 new_added += 1
 
             if (total is not None and len(aggregated) >= int(total)) or len(page_items) < page_size:
-                return {
+                return { # All items retrieved
                     "ok": True,
                     "status": last_status,
                     "data": {
@@ -281,12 +298,15 @@ class JellyfinClient:
     def library_stats(self, library_id: str) -> Dict[str, Any]:
         """
         Returns item count for a library.
+
+        :param library_id: Jellyfin library identifier
+        :returns dict: Resulting object containing success flag and item count
         """
-        result = self.library_items(library_id)
+        result = self.library_items(library_id) # Fetch all items for the library
         if result.get("ok") and isinstance(result.get("data"), dict):
             return {
                 "ok": True,
-                "item_count": result["data"].get(
+                "item_count": result["data"].get( # Total number of items in library
                     "TotalRecordCount", 0
                 )
             }
@@ -302,11 +322,12 @@ class JellyfinClient:
         """
         Retrieve activity log entries from Jellyfin with pagination.
 
-        Supports filtering by date range and user context. Returns
-        paginated results suitable for bulk historical pulls.
+        :param start_index: Zero-based offset for paginated results
+        :param limit: Max number of entires to return
+        :param min_date: Optional timestamp to filter entries from
+        :param has_user_id: Whether to include only entries associated with users
+        :returns dict: Resulting object containing success flag, status, and log entries
         """
-        # Build query parameters carefully to avoid exceeding
-        # line length
         path = (
             f"/System/ActivityLog/Entries?"
             f"startIndex={start_index}&"
@@ -314,7 +335,7 @@ class JellyfinClient:
             f"hasUserId={str(has_user_id).lower()}"
         )
 
-        if min_date:
+        if min_date: # Apply date filter if given
             from urllib.parse import quote
             encoded_date = quote(min_date, safe='')
             path += f"&minDate={encoded_date}"
@@ -325,5 +346,8 @@ class JellyfinClient:
 def create_client(settings_service: SettingsService) -> JellyfinClient:
     """
     Factory to create a JellyfinClient from a settings_store.
+
+    :param settings_service: Settings provider containing config
+    : returns JellyfinClient: Initialized Jellyfin client instance
     """
     return JellyfinClient(settings_service)

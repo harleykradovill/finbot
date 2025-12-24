@@ -354,27 +354,6 @@ body {
   box-shadow: 0 0 0 2px rgba(138, 180, 248, 0.35);
 }
 
-@media (max-width: 640px) {
-  .hero {
-    padding: 1.5rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .modal {
-    width: 95%;
-    max-width: 100%;
-  }
-
-  .modal-content {
-    padding: 1rem;
-  }
-
-  .jf-server-info {
-    flex-direction: column;
-  }
-}
-
 /* Toasts */
 .toast-container {
   position: fixed;

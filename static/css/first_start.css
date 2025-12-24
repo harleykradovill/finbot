@@ -13,12 +13,6 @@
   gap: 1rem;
 }
 
-@media (max-width: 720px) {
-  #first-start-form.first-start-form {
-    grid-template-columns: 1fr;
-  }
-}
-
 .jf-server-fieldset {
   border: 1px solid var(--border);
   padding: 1rem;
