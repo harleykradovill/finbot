@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import time
+import json
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker, Session
 
 from services.data_models import (
@@ -14,9 +15,45 @@ from services.data_models import (
     Library,
     Item,
     PlaybackActivity,
-    TaskLog
+    TaskLog,
 )
+from services.stats_aggregator import StatsAggregator
+from services.settings_store import Settings
 
+
+# -------------------------
+# Helpers
+# -------------------------
+
+def _now() -> int:
+    """Return current Unix timestamp in seconds."""
+    return int(time.time())
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    """
+    Safely coerce a value to int, returning default on failure.
+    """
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
+def _load_existing_by_key(
+    session: Session,
+    model,
+    key_field,
+    keys: List[Any],
+) -> Dict[Any, Any]:
+    """
+    Load existing ORM rows keyed by a specific column.
+    """
+    if not keys:
+        return {}
+
+    rows = session.query(model).filter(key_field.in_(keys)).all()
+    return {getattr(r, key_field.key): r for r in rows}
 
 @dataclass
 class Repository:
@@ -35,7 +72,9 @@ class Repository:
 
     @contextmanager
     def _session(self):
-        """Context manager for database sessions with auto-commit."""
+        """
+        Context manager for database sessions with auto-commit.
+        """
         session: Session = self.SessionLocal()
         try:
             yield session
@@ -46,7 +85,9 @@ class Repository:
         finally:
             session.close()
 
+    # -------------------------
     # Users
+    # -------------------------
 
     def upsert_users(self, user_dicts: List[Dict[str, Any]]) -> int:
         """
@@ -55,19 +96,21 @@ class Repository:
         if not user_dicts:
             return 0
 
-        count = 0
-        now = int(time.time())
-
         with self._session() as session:
+            existing = _load_existing_by_key(
+                session,
+                User,
+                User.jellyfin_id,
+                [d.get("jellyfin_id") for d in user_dicts if d.get("jellyfin_id")],
+            )
+
+            processed = 0
             for data in user_dicts:
                 jf_id = data.get("jellyfin_id")
                 if not jf_id:
                     continue
 
-                user = session.query(User).filter_by(
-                    jellyfin_id=jf_id
-                ).first()
-
+                user = existing.get(jf_id)
                 if user:
                     user.name = data.get("name", user.name)
                     user.is_admin = data.get("is_admin", user.is_admin)
@@ -79,11 +122,11 @@ class Repository:
                         is_admin=data.get("is_admin", False),
                         archived=False,
                     )
+                    session.add(user)
 
-                session.merge(user)
-                count += 1
+                processed += 1
 
-        return count
+            return processed
 
     def archive_missing_users(
         self, active_jellyfin_ids: List[str]
@@ -95,13 +138,12 @@ class Repository:
             return 0
 
         with self._session() as session:
-            result = (
+            return (
                 session.query(User)
                 .filter(User.jellyfin_id.notin_(active_jellyfin_ids))
-                .filter(User.archived == False)
+                .filter(User.archived.is_(False))
                 .update({"archived": True}, synchronize_session=False)
             )
-            return result
 
     def list_users(
         self, include_archived: bool = False
@@ -112,10 +154,12 @@ class Repository:
         with self._session() as session:
             query = session.query(User)
             if not include_archived:
-                query = query.filter(User.archived == False)
+                query = query.filter(User.archived.is_(False))
             return [u.to_dict() for u in query.all()]
 
+    # -------------------------
     # Libraries
+    # -------------------------
 
     def upsert_libraries(
         self, library_dicts: List[Dict[str, Any]]
@@ -126,21 +170,15 @@ class Repository:
         if not library_dicts:
             return 0
 
-        now = int(time.time())
-        processed = 0
-
         with self._session() as session:
-            jf_ids = [d.get("jellyfin_id") for d in library_dicts if d.get("jellyfin_id")]
-            existing = {}
-            if jf_ids:
-                rows = (
-                    session.query(Library)
-                    .filter(Library.jellyfin_id.in_(jf_ids))
-                    .all()
-                )
-                existing = {r.jellyfin_id: r for r in rows}
+            existing = _load_existing_by_key(
+                session,
+                Library,
+                Library.jellyfin_id,
+                [d.get("jellyfin_id") for d in library_dicts if d.get("jellyfin_id")],
+            )
 
-            to_add = []
+            processed = 0
             for data in library_dicts:
                 jf_id = data.get("jellyfin_id")
                 if not jf_id:
@@ -152,23 +190,20 @@ class Repository:
                     lib.type = data.get("type", lib.type)
                     lib.image_url = data.get("image_url", lib.image_url)
                     lib.archived = False
-                    lib.updated_at = now
                 else:
-                    lib = Library(
-                        jellyfin_id=jf_id,
-                        name=data.get("name", "Unknown"),
-                        type=data.get("type"),
-                        image_url=data.get("image_url"),
-                        archived=False,
+                    session.add(
+                        Library(
+                            jellyfin_id=jf_id,
+                            name=data.get("name", "Unknown"),
+                            type=data.get("type"),
+                            image_url=data.get("image_url"),
+                            archived=False,
+                        )
                     )
-                    to_add.append(lib)
 
                 processed += 1
 
-            if to_add:
-                session.add_all(to_add)
-
-        return processed
+            return processed
 
     def archive_missing_libraries(
         self, active_jellyfin_ids: List[str]
@@ -180,13 +215,12 @@ class Repository:
             return 0
 
         with self._session() as session:
-            result = (
+            return (
                 session.query(Library)
                 .filter(Library.jellyfin_id.notin_(active_jellyfin_ids))
-                .filter(Library.archived == False)
+                .filter(Library.archived.is_(False))
                 .update({"archived": True}, synchronize_session=False)
             )
-            return result
 
     def list_libraries(
         self, include_archived: bool = False
@@ -197,8 +231,8 @@ class Repository:
         with self._session() as session:
             query = session.query(Library)
             if not include_archived:
-                query = query.filter(Library.archived == False)
-            return [lib.to_dict() for lib in query.all()]
+                query = query.filter(Library.archived.is_(False))
+            return [l.to_dict() for l in query.all()]
 
     def set_library_tracked(
         self, jellyfin_id: str, tracked: bool
@@ -214,36 +248,28 @@ class Repository:
                 return None
 
             lib.tracked = bool(tracked)
-            session.merge(lib)
-            session.commit()
-            session.refresh(lib)
             return lib.to_dict()
 
+    # -------------------------
     # Items
+    # -------------------------
 
     def upsert_items(self, item_dicts: List[Dict[str, Any]]) -> int:
         """
         Upsert media items by jellyfin_id.
         """
-        import time
-        from services.data_models import Item
+        if not item_dicts:
+            return 0
 
-        now = int(time.time())
-        processed = 0
         with self._session() as session:
-            jf_ids = [
-                d.get("jellyfin_id") for d in item_dicts if d.get("jellyfin_id")
-            ]
-            existing = {}
-            if jf_ids:
-                rows = (
-                    session.query(Item)
-                    .filter(Item.jellyfin_id.in_(jf_ids))
-                    .all()
-                )
-                existing = {r.jellyfin_id: r for r in rows}
+            existing = _load_existing_by_key(
+                session,
+                Item,
+                Item.jellyfin_id,
+                [d.get("jellyfin_id") for d in item_dicts if d.get("jellyfin_id")],
+            )
 
-            to_add: List[Item] = []
+            processed = 0
             for data in item_dicts:
                 jf_id = data.get("jellyfin_id")
                 if not jf_id:
@@ -256,50 +282,30 @@ class Repository:
                     item.type = data.get("type", item.type)
                     item.archived = False
                     item.date_created = data.get("date_created", item.date_created)
-
-                    try:
-                        item.runtime_seconds = int(
-                            data.get("runtime_seconds", item.runtime_seconds or 0)
-                        )
-                    except Exception:
-                        pass
-
-                    try:
-                        item.size_bytes = int(
-                            data.get("size_bytes", item.size_bytes or 0)
-                        )
-                    except Exception:
-                        pass
-                else:
-                    try:
-                        runtime = int(data.get("runtime_seconds", 0))
-                    except Exception:
-                        runtime = 0
-
-                    try:
-                        size = int(data.get("size_bytes", 0))
-                    except Exception:
-                        size = 0
-
-                    item = Item(
-                        jellyfin_id=jf_id,
-                        library_id=data.get("library_id"),
-                        parent_id=data.get("parent_id"),
-                        name=data.get("name", "Unknown"),
-                        type=data.get("type"),
-                        runtime_seconds=runtime,
-                        size_bytes=size,
-                        archived=False,
-                        date_created=data.get("date_created")
+                    item.runtime_seconds = _safe_int(
+                        data.get("runtime_seconds"), item.runtime_seconds or 0
                     )
-                    to_add.append(item)
+                    item.size_bytes = _safe_int(
+                        data.get("size_bytes"), item.size_bytes or 0
+                    )
+                else:
+                    session.add(
+                        Item(
+                            jellyfin_id=jf_id,
+                            library_id=data.get("library_id"),
+                            parent_id=data.get("parent_id"),
+                            name=data.get("name", "Unknown"),
+                            type=data.get("type"),
+                            runtime_seconds=_safe_int(data.get("runtime_seconds")),
+                            size_bytes=_safe_int(data.get("size_bytes")),
+                            archived=False,
+                            date_created=data.get("date_created"),
+                        )
+                    )
 
                 processed += 1
 
-            if to_add:
-                session.add_all(to_add)
-
-        return processed
+            return processed
 
     def archive_missing_items(
         self, library_id: int, active_jellyfin_ids: List[str]
@@ -311,130 +317,59 @@ class Repository:
             return 0
 
         with self._session() as session:
-            result = (
+            return (
                 session.query(Item)
                 .filter(Item.library_id == library_id)
                 .filter(Item.jellyfin_id.notin_(active_jellyfin_ids))
-                .filter(Item.archived == False)
+                .filter(Item.archived.is_(False))
                 .update({"archived": True}, synchronize_session=False)
             )
-            return result
-        
+
+    # -------------------------
+    # Stats & Activity
+    # -------------------------
+
     def refresh_play_stats(self) -> Dict[str, int]:
         """
         Refresh all denormalized play count statistics from
         PlaybackActivity records.
         """
-        from services.stats_aggregator import StatsAggregator
-
         with self._session() as session:
-            result = StatsAggregator.refresh_all_stats(session)
-            try:
-                session.commit()
-            except Exception:
-                try:
-                    session.rollback()
-                except Exception:
-                    pass
-            return result
-        
+            return StatsAggregator.refresh_all_stats(session)
+
     def get_top_items_by_plays(
-        self,
-        limit: int = 10
+        self, limit: int = 10
     ) -> List[Dict[str, Any]]:
         """
         Retrieve the most played items across all libraries.
         """
-        from services.stats_aggregator import StatsAggregator
-
         with self._session() as session:
-            return StatsAggregator.get_top_items_by_plays(
-                session,
-                limit=limit
-            )
-        
+            return StatsAggregator.get_top_items_by_plays(session, limit)
+
     def get_top_users_by_plays(
-        self,
-        limit: int = 10
+        self, limit: int = 10
     ) -> List[Dict[str, Any]]:
         """
         Retrieve the most active users by total play count.
         """
-        from services.stats_aggregator import StatsAggregator
-
         with self._session() as session:
-            return StatsAggregator.get_top_users_by_plays(
-                session,
-                limit=limit
-            )
-        
+            return StatsAggregator.get_top_users_by_plays(session, limit)
+
     def get_library_stats(
-        self,
-        include_archived: bool = False
+        self, include_archived: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Retrieve all libraries with their play count statistics.
         """
-        from services.stats_aggregator import StatsAggregator
-
         with self._session() as session:
             return StatsAggregator.get_library_stats(
                 session,
-                include_archived=include_archived
+                include_archived=include_archived,
             )
-        
-    # Activity Log Tracking
 
-    def get_last_activity_log_sync(self) -> Optional[int]:
-        """
-        Retrieve the Unix timestamp of the last successful
-        activity log sync.
-        """
-        from services.settings_store import Settings
-        import logging
-        
-        try:
-            with self._session() as session:
-                settings = (
-                    session.query(Settings)
-                    .filter_by(id=1)
-                    .first()
-                )
-                if settings:
-                    return settings.last_activity_log_sync
-                return None
-        except Exception:
-            logging.error("[ERROR] Failed to read last_activity_log_sync")
-            return None
-
-    def get_latest_sync_task(
-        self
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Retrieve the most recent sync task log entry.
-        """
-        with self._session() as session:
-            task = (
-                session.query(TaskLog)
-                .filter(TaskLog.type == "sync")
-                .order_by(TaskLog.started_at.desc())
-                .first()
-            )
-            if task:
-                return {
-                    "id": task.id,
-                    "name": task.name,
-                    "type": task.type,
-                    "execution_type": task.execution_type,
-                    "result": task.result,
-                    "started_at": task.started_at,
-                    "finished_at": task.finished_at,
-                    "duration_ms": task.duration_ms,
-                    "log_json": task.log_json,
-                }
-            return None
-
+    # -------------------------
     # Playback Activity
+    # -------------------------
 
     def insert_playback_events(
         self, event_dicts: List[Dict[str, Any]]
@@ -442,59 +377,52 @@ class Repository:
         """
         Insert playback activity records.
         """
-        import time
-        from services.data_models import PlaybackActivity
-
         if not event_dicts:
             return 0
 
-        processed = 0
-        to_add: List[PlaybackActivity] = []
-
         with self._session() as session:
-            activity_ids = [
-                d.get("activity_log_id") for d in event_dicts
-                if d.get("activity_log_id") is not None
-            ]
-            existing_map = {}
-            if activity_ids:
-                rows = (
-                    session.query(PlaybackActivity)
-                    .filter(PlaybackActivity.activity_log_id.in_(activity_ids))
-                    .all()
-                )
-                existing_map = {r.activity_log_id: r for r in rows}
+            existing = _load_existing_by_key(
+                session,
+                PlaybackActivity,
+                PlaybackActivity.activity_log_id,
+                [
+                    d.get("activity_log_id")
+                    for d in event_dicts
+                    if d.get("activity_log_id") is not None
+                ],
+            )
 
+            processed = 0
             for d in event_dicts:
                 act_id = d.get("activity_log_id")
                 if not act_id:
                     continue
 
-                existing = existing_map.get(act_id)
-                if existing:
-                    existing.user_id = d.get("user_id", existing.user_id)
-                    existing.item_id = d.get("item_id", existing.item_id)
-                    existing.event_name = d.get("event_name", existing.event_name)
-                    existing.activity_at = d.get("activity_at", existing.activity_at)
-                    existing.username_denorm = d.get("username_denorm", existing.username_denorm)
-                else:
-                    pa = PlaybackActivity(
-                        activity_log_id=act_id,
-                        user_id=d.get("user_id"),
-                        item_id=d.get("item_id"),
-                        event_name=d.get("event_name"),
-                        activity_at=d.get("activity_at") or int(time.time()),
-                        username_denorm=d.get("username_denorm"),
+                pa = existing.get(act_id)
+                if pa:
+                    pa.user_id = d.get("user_id", pa.user_id)
+                    pa.item_id = d.get("item_id", pa.item_id)
+                    pa.event_name = d.get("event_name", pa.event_name)
+                    pa.activity_at = d.get("activity_at", pa.activity_at)
+                    pa.username_denorm = d.get(
+                        "username_denorm", pa.username_denorm
                     )
-                    to_add.append(pa)
+                else:
+                    session.add(
+                        PlaybackActivity(
+                            activity_log_id=act_id,
+                            user_id=d.get("user_id"),
+                            item_id=d.get("item_id"),
+                            event_name=d.get("event_name"),
+                            activity_at=d.get("activity_at") or _now(),
+                            username_denorm=d.get("username_denorm"),
+                        )
+                    )
 
                 processed += 1
 
-            if to_add:
-                session.add_all(to_add)
+            return processed
 
-        return processed
-    
     def get_activity_logs(
         self, page: int = 1, per_page: int = 50
     ) -> Dict[str, Any]:
@@ -505,31 +433,30 @@ class Repository:
         per_page = max(1, min(1000, int(per_page or 50)))
         offset = (page - 1) * per_page
 
-        from sqlalchemy import func
-        from services.data_models import PlaybackActivity
-
         with self._session() as session:
             total = session.query(func.count(PlaybackActivity.id)).scalar() or 0
-
             rows = (
                 session.query(PlaybackActivity)
-                .order_by(PlaybackActivity.activity_at.desc(), PlaybackActivity.id.desc())
+                .order_by(
+                    PlaybackActivity.activity_at.desc(),
+                    PlaybackActivity.id.desc(),
+                )
                 .offset(offset)
                 .limit(per_page)
                 .all()
             )
 
-            items = [r.to_dict() for r in rows]
+            return {
+                "ok": True,
+                "items": [r.to_dict() for r in rows],
+                "page": page,
+                "per_page": per_page,
+                "total": int(total),
+            }
 
-        return {
-            "ok": True,
-            "items": items,
-            "page": page,
-            "per_page": per_page,
-            "total": int(total),
-        }
-
+    # -------------------------
     # Task Logging
+    # -------------------------
 
     def create_task_log(
         self, name: str, task_type: str, execution_type: str
@@ -537,23 +464,18 @@ class Repository:
         """
         Create a new task log entry with RUNNING status.
         """
-        import time
-        from services.data_models import TaskLog
-
-        now = int(time.time())
         with self._session() as session:
             task = TaskLog(
                 name=name,
                 type=task_type,
                 execution_type=execution_type,
                 duration_ms=0,
-                started_at=now,
+                started_at=_now(),
                 finished_at=None,
                 result="RUNNING",
                 log_json=None,
             )
             session.add(task)
-
             session.flush()
             return int(task.id)
 
@@ -566,31 +488,22 @@ class Repository:
         """
         Mark a task log as complete with result.
         """
-        import json
-
-        now = int(time.time())
         with self._session() as session:
             task = session.query(TaskLog).filter_by(id=task_id).first()
             if not task:
                 return
 
+            now = _now()
             task.finished_at = now
             task.duration_ms = (now - task.started_at) * 1000
             task.result = result
-
-            if log_data:
-                task.log_json = json.dumps(log_data)
-
-            session.merge(task)
+            task.log_json = json.dumps(log_data) if log_data else None
 
     def get_task_logs(self, limit: int = 25) -> List[Dict[str, Any]]:
         """
         Retrieve recent task log entries ordered by start time (newest first).
         """
-        if not isinstance(limit, int) or limit < 1:
-            limit = 25
-        if limit > 500:
-            limit = 500
+        limit = min(max(int(limit or 25), 1), 500)
 
         with self._session() as session:
             rows = (
