@@ -18,64 +18,84 @@ from services.data_models import (
 
 
 class StatsAggregator:
+
+    @staticmethod
     def refresh_all_stats(session: Session) -> Dict[str, int]:
         """
         Refresh all denormalized statistics in a single operation.
         """
+
+        # ---- Item play counts ----
         play_counts = dict(
             session.query(
                 PlaybackActivity.item_id,
-                func.count(PlaybackActivity.id)
+                func.count(PlaybackActivity.id),
             )
             .group_by(PlaybackActivity.item_id)
             .all()
         )
 
-        items_updated = 0
+        items_processed = 0
         if play_counts:
-            rows = session.query(Item).filter(Item.jellyfin_id.in_(list(play_counts.keys()))).all()
-            for it in rows:
-                new_count = int(play_counts.get(it.jellyfin_id, 0))
-                if it.play_count != new_count:
-                    it.play_count = new_count
-                items_updated += 1
+            items = (
+                session.query(Item)
+                .filter(Item.jellyfin_id.in_(play_counts.keys()))
+                .all()
+            )
+            for item in items:
+                new_count = int(play_counts.get(item.jellyfin_id, 0))
+                if item.play_count != new_count:
+                    item.play_count = new_count
+                items_processed += 1
 
+        # ---- User play counts ----
         user_counts = dict(
             session.query(
                 PlaybackActivity.user_id,
-                func.count(PlaybackActivity.id)
+                func.count(PlaybackActivity.id),
             )
             .group_by(PlaybackActivity.user_id)
             .all()
         )
-        users_updated = 0
+
+        users_processed = 0
         if user_counts:
-            urows = session.query(User).filter(User.jellyfin_id.in_(list(user_counts.keys()))).all()
-            for u in urows:
-                new_total = int(user_counts.get(u.jellyfin_id, 0))
-                if u.total_plays != new_total:
-                    u.total_plays = new_total
-                users_updated += 1
+            users = (
+                session.query(User)
+                .filter(User.jellyfin_id.in_(user_counts.keys()))
+                .all()
+            )
+            for user in users:
+                new_total = int(user_counts.get(user.jellyfin_id, 0))
+                if user.total_plays != new_total:
+                    user.total_plays = new_total
+                users_processed += 1
 
+        # ---- Library aggregates ----
+        libraries_processed = 0
         libraries = session.query(Library).all()
-        libs_updated = 0
-        for lib in libraries:
-            agg = session.query(
-                func.count(Item.id),
-                func.coalesce(func.sum(Item.runtime_seconds), 0),
-                func.coalesce(func.sum(Item.size_bytes), 0),
-                func.coalesce(func.sum(Item.runtime_seconds * Item.play_count), 0),
-                func.coalesce(func.sum(Item.play_count), 0),
-            ).filter(
-                Item.library_id == lib.id,
-                Item.archived == False
-            ).one()
 
-            total_files = int(agg[0] or 0)
-            total_time_seconds = int(agg[1] or 0)
-            size_bytes = int(agg[2] or 0)
-            total_playback_seconds = int(agg[3] or 0)
-            total_plays = int(agg[4] or 0)
+        for lib in libraries:
+            agg = (
+                session.query(
+                    func.count(Item.id),
+                    func.coalesce(func.sum(Item.runtime_seconds), 0),
+                    func.coalesce(func.sum(Item.size_bytes), 0),
+                    func.coalesce(func.sum(Item.runtime_seconds * Item.play_count), 0),
+                    func.coalesce(func.sum(Item.play_count), 0),
+                )
+                .filter(
+                    Item.library_id == lib.id,
+                    Item.archived.is_(False),
+                )
+                .one()
+            )
+
+            total_files = int(agg[0])
+            total_time_seconds = int(agg[1])
+            size_bytes = int(agg[2])
+            total_playback_seconds = int(agg[3])
+            total_plays = int(agg[4])
 
             last = (
                 session.query(PlaybackActivity, Item)
@@ -85,11 +105,9 @@ class StatsAggregator:
                 .limit(1)
                 .first()
             )
-            last_played_name: Optional[str] = None
-            if last and last[1]:
-                last_played_name = last[1].name
 
-            # Persist if changed
+            last_played_name: Optional[str] = last[1].name if last else None
+
             changed = False
             if lib.total_files != total_files:
                 lib.total_files = total_files
@@ -112,85 +130,104 @@ class StatsAggregator:
 
             if changed:
                 session.merge(lib)
-            libs_updated += 1
+
+            libraries_processed += 1
+
+        session.commit()
 
         return {
-            "libraries_processed": libs_updated,
-            "items_processed": items_updated,
-            "users_processed": users_updated,
+            "libraries_processed": libraries_processed,
+            "items_processed": items_processed,
+            "users_processed": users_processed,
         }
 
+    @staticmethod
     def get_top_items_by_plays(
         session: Session,
-        limit: int = 10
+        limit: int = 10,
     ) -> List[Dict[str, Any]]:
         """
         Retrieve the most played items across all libraries.
         """
-        q = (
+        rows = (
             session.query(Item, Library)
             .join(Library, Item.library_id == Library.id)
             .order_by(Item.play_count.desc())
             .limit(limit)
             .all()
         )
-        return [
-            {
-                "item_id": it.Item.jellyfin_id,
-                "name": it.Item.name,
-                "type": it.Item.type,
-                "play_count": int(it.Item.play_count or 0),
-                "library_id": it.Library.id,
-                "library_name": it.Library.name,
-            } for it in q
-        ]
 
+        out: List[Dict[str, Any]] = []
+        for item, library in rows:
+            out.append({
+                "item_id": item.jellyfin_id,
+                "name": item.name,
+                "type": item.type,
+                "play_count": int(item.play_count or 0),
+                "library_id": library.id,
+                "library_name": library.name,
+            })
+        return out
+
+    @staticmethod
     def get_top_users_by_plays(
         session: Session,
-        limit: int = 10
+        limit: int = 10,
     ) -> List[Dict[str, Any]]:
         """
         Retrieve the most active users by play count.
         """
-        q = session.query(User).order_by(User.total_plays.desc()).limit(limit).all()
+        users = (
+            session.query(User)
+            .order_by(User.total_plays.desc())
+            .limit(limit)
+            .all()
+        )
         return [
             {
                 "user_id": u.jellyfin_id,
                 "name": u.name,
                 "total_plays": int(u.total_plays or 0),
-            } for u in q
+            }
+            for u in users
         ]
 
+    @staticmethod
     def get_library_stats(
         session: Session,
-        include_archived: bool = False
+        include_archived: bool = False,
     ) -> List[Dict[str, Any]]:
         """
         Retrieve all libraries with their play counts.
         """
         query = session.query(Library)
         if not include_archived:
-            query = query.filter(Library.archived == False)
+            query = query.filter(Library.archived.is_(False))
 
         out: List[Dict[str, Any]] = []
         for lib in query.all():
             series_count = 0
             episode_count = 0
-            try:
-                rows = (
-                    session.query(func.lower(Item.type).label("type"), func.count(Item.id))
-                    .filter(Item.library_id == lib.id, Item.archived == False)
-                    .group_by(func.lower(Item.type))
-                    .all()
+
+            rows = (
+                session.query(
+                    func.lower(Item.type),
+                    func.count(Item.id),
                 )
-                for t, cnt in rows:
-                    if t == "series":
-                        series_count = int(cnt)
-                    elif t == "episode":
-                        episode_count = int(cnt)
-            except Exception:
-                series_count = 0
-                episode_count = 0
+                .filter(
+                    Item.library_id == lib.id,
+                    Item.archived.is_(False),
+                )
+                .group_by(func.lower(Item.type))
+                .all()
+            )
+
+            for item_type, cnt in rows:
+                if item_type == "series":
+                    series_count = int(cnt)
+                elif item_type == "episode":
+                    episode_count = int(cnt)
+
             out.append({
                 "id": lib.id,
                 "jellyfin_id": lib.jellyfin_id,
@@ -209,4 +246,5 @@ class StatsAggregator:
                 "series_count": series_count,
                 "episode_count": episode_count,
             })
+
         return out
