@@ -214,7 +214,7 @@ class TaskLog(Base):
         if self.log_json:
             try:
                 log_data = json.loads(self.log_json)
-            except Exception:
+            except json.JSONDecodeError:
                 log_data = self.log_json
 
         return {

@@ -15,6 +15,11 @@ import ipaddress
 
 from services.settings_store import SettingsService
 
+HOSTNAME_RE = re.compile(
+    r"^(?=.{1,255}$)"
+    r"([A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?)"
+    r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?)*$"
+    )
 
 class JellyfinClient:
     def __init__(self, settings: SettingsService) -> None:
@@ -65,7 +70,6 @@ class JellyfinClient:
                 ipaddress.ip_address(host) # Accept valid ipv4/ipv6
                 valid = True
             except Exception:
-                HOSTNAME_RE = re.compile(r"^(?=.{1,255}$)([A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?)(?:\.[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?)*$")
                 if HOSTNAME_RE.match(host):
                     valid = True
 
@@ -74,28 +78,22 @@ class JellyfinClient:
 
         return scheme, host, port, token
 
-    def _build_url(self, path: str) -> Optional[str]:
+    def _build_url(self, scheme: str, host: str, port: int, path: str) -> str:
         """
         Construct a full URL for a given Jellyfin path.
 
         :param path: API path
         :returns str | None: Fully URL, or None if config is invalid
         """
-        scheme, host, port, token = self._read_settings() # Load normalized settings
-        if not host or not port or not port.isdigit() or not token: # Missing or invalid connection data
-            return None
-
-        try:
-            pnum = int(port)
-            if pnum < 1 or pnum > 65535: # Reject out-of-range ports
-                return None
-        except Exception: # Reject non-numeric ports
-            return None
-
-        if not path.startswith("/"): # Ensure leading slash for URL path
+        if not path.startswith("/"):
             path = f"/{path}"
 
-        base = f"{scheme}://{host}:{pnum}" # Construct scheme/host/port
+        try:
+            ipaddress.IPv6Address(host)
+            base = f"{scheme}://[{host}]:{port}"
+        except ValueError:
+            base = f"{scheme}://{host}:{port}"
+
         return f"{base}{path}"
 
     def _is_transient_error(self, exc: Exception) -> bool:
@@ -125,15 +123,16 @@ class JellyfinClient:
         :param backoff_base: Base delay (in sec)
         :returns dict: Result object containing success flag, status code, and payload/error
         """
-        url = self._build_url(path)
-        if not url: # Invalid or incomplete config
+        conn = self._connection()
+        if not conn:
             return {
                 "ok": False,
                 "status": 400,
                 "message": "Missing or invalid host/port/token in settings.",
             }
 
-        _, _, _, token = self._read_settings() # Retrieve API auth token
+        scheme, host, port, token = conn # Retrieve settings
+        url = self._build_url(scheme, host, port, path)
 
         req = Request(url, method="GET")
         req.add_header("X-Emby-Token", token)
@@ -214,6 +213,16 @@ class JellyfinClient:
             "status": 0,
             "message": f"Failed after {max_retries} retries",
         }
+
+    def _connection(self):
+        scheme, host, port, token = self._read_settings()
+        if not host or not port or not port.isdigit() or not token:
+            return None
+        pnum = int(port)
+        if not 1 <= pnum <= 65535:
+            return None
+        return scheme, host, pnum, token
+
 
     def validate_connection(self) -> Dict[str, Any]:
         """
@@ -302,7 +311,7 @@ class JellyfinClient:
         :param library_id: Jellyfin library identifier
         :returns dict: Resulting object containing success flag and item count
         """
-        result = self.library_items(library_id) # Fetch all items for the library
+        result = self._get(f"/Items?ParentId={library_id}&Limit=0") # Fetch libraries
         if result.get("ok") and isinstance(result.get("data"), dict):
             return {
                 "ok": True,
