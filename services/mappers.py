@@ -3,220 +3,242 @@ from __future__ import annotations
 from typing import Dict, Any, List, Optional
 import re
 from datetime import datetime, timezone
-import logging
+import time
+
+
+# -------------------------
+# Generic helpers
+# -------------------------
+
+def _clean_str(value: Any) -> str:
+    """
+    Convert a value to a trimmed string.
+    
+    :param value: Any value to convert to string
+    :return: A str with leading/trailing whitespace removed
+    """
+    return str(value).strip() if value else ""
+
+
+def _parse_jf_date(value: Any) -> Optional[int]:
+    """
+    Parse various Jellyfin DateCreated formats into epoch seconds.
+    
+    :param value: The date value from Jellyfin
+    :return: Epoch seconds as an int, or None if cannot be parsed
+    """
+    if not value:
+        return None
+
+    if isinstance(value, (int, float)):
+        v = int(value)
+        return v // 1000 if v > 1_000_000_000_000 else v
+
+    s = str(value).strip()
+
+    m = re.search(r"/Date\((?P<ms>-?\d+)", s)
+    if m:
+        return int(int(m.group("ms")) // 1000)
+
+    if s.isdigit():
+        v = int(s)
+        return v // 1000 if v > 1_000_000_000_000 else v
+
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+
+    try:
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        return None
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return int(dt.timestamp())
+
+
+def _map_many(
+    items: List[Dict[str, Any]],
+    fn,
+) -> List[Dict[str, Any]]:
+    """
+    Map a list of Jellyfin objects to table row dicts.
+    
+    :param items: Iterable of dict-like Jellyfin objects
+    :param fn: A function that accepts a single item
+    :return: A list of mapped dicts produced by fn for each item
+    """
+    return [m for item in items or [] if (m := fn(item))]
+
+
+# -------------------------
+# Users
+# -------------------------
 
 def map_user(jf_user: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
-    Transform a Jellyfin user object into a User table row dict.
-    """
-    jf_id = (jf_user.get("Id") or "").strip()
-    name = (jf_user.get("Name") or "").strip()
+    Tranform a Jellyfin user object into a User table row dict.
     
+    :param jf_user: Jellyfin user object
+    :return: A dict containing 'jellyfin_id', 'name', 'is_admin'
+    """
+    jf_id = _clean_str(jf_user.get("Id"))
+    name = _clean_str(jf_user.get("Name"))
+
     if not jf_id or not name:
         return None
-    
+
     return {
         "jellyfin_id": jf_id,
         "name": name,
-        "is_admin": jf_user.get("Policy", {}).get("IsAdministrator", False),
+        "is_admin": bool(jf_user.get("Policy", {}).get("IsAdministrator")),
     }
 
 
 def map_users(jf_users: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Transform a list of Jellyfin users into User table row dicts.
+    
+    :param jf_users: List of Jellyfin user dicts
+    :return: List of mapped user dicts
     """
-    results = []
-    for user in jf_users:
-        mapped = map_user(user)
-        if mapped:
-            results.append(mapped)
-    return results
+    return _map_many(jf_users, map_user)
 
+
+# -------------------------
+# Libraries
+# -------------------------
 
 def map_library(jf_library: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """
-    Transform a Jellyfin library/media folder into a Library table row
-    dict.
-    """
-    jf_id = (jf_library.get("Id") or "").strip()
-    name = (
-        jf_library.get("Name")
-        or jf_library.get("Path")
-        or ""
-    ).strip()
+    Transform a Jellyfin library/media folder into a Library table row dict.
     
+    :param jf_library: Jellyfin library object
+    :return: A dict containing 'jellyfin_id', 'name', 'type', 'image_url'
+    """
+    jf_id = _clean_str(jf_library.get("Id"))
+    name = _clean_str(jf_library.get("Name") or jf_library.get("Path"))
+
     if not jf_id or not name:
         return None
-    
-    lib_type = jf_library.get("CollectionType") or jf_library.get("Type")
-    
-    image_tags = jf_library.get("ImageTags", {})
-    primary_tag = image_tags.get("Primary")
-    image_url = None
-    if primary_tag:
-        image_url = (
-            f"/Items/{jf_id}/Images/Primary?tag={primary_tag}"
-        )
-    
+
+    image_tag = jf_library.get("ImageTags", {}).get("Primary")
+    image_url = (
+        f"/Items/{jf_id}/Images/Primary?tag={image_tag}"
+        if image_tag
+        else None
+    )
+
     return {
         "jellyfin_id": jf_id,
         "name": name,
-        "type": lib_type,
+        "type": jf_library.get("CollectionType") or jf_library.get("Type"),
         "image_url": image_url,
     }
 
 
-def map_libraries(
-    jf_libraries: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
+def map_libraries(jf_libraries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Transform a list of Jellyfin libraries into Library table row dicts.
+    
+    :param jf_libraries: List of Jellyfin library dicts
+    :return: List of mapped library dicts
     """
-    results = []
-    for lib in jf_libraries:
-        mapped = map_library(lib)
-        if mapped:
-            results.append(mapped)
-    return results
+    return _map_many(jf_libraries, map_library)
 
-def _parse_jf_date(jf_val) -> int | None:
-    """
-    Parse various Jellyfin DateCreated formats into epoch seconds.
-    Returns None if parsing fails or value is falsy.
-    """
-    if jf_val is None:
-        return None
-    try:
-        if isinstance(jf_val, (int, float)):
-            v = int(jf_val)
-            return int(v // 1000) if v > 1e12 else v
-        s = str(jf_val).strip()
-        m = re.search(r"/Date\((?P<ms>-?\d+)", s)
-        if m:
-            ms = int(m.group("ms"))
-            return int(ms // 1000)
-        if s.isdigit():
-            v = int(s)
-            return int(v // 1000) if v > 1e12 else v
-        if s.endswith("Z"):
-            s = s[:-1] + "+00:00"
-        dt = datetime.fromisoformat(s)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return int(dt.timestamp())
-    except Exception:
-        return None
+
+# -------------------------
+# Items
+# -------------------------
 
 def map_item(
     jf_item: Dict[str, Any],
-    library_internal_id: int
+    library_internal_id: int,
 ) -> Optional[Dict[str, Any]]:
     """
     Transform a Jellyfin media item into an Item table row dict.
-    """
-    jf_id = (jf_item.get("Id") or "").strip()
-    name = (jf_item.get("Name") or "").strip()
     
+    :param jf_item: Jellyfin item object
+    :param library_internal_id: Internal database ID for libary
+    :return: A dict with fields suitable for insertion into Item table
+    """
+    jf_id = _clean_str(jf_item.get("Id"))
+    name = _clean_str(jf_item.get("Name"))
+
     if not jf_id or not name:
         return None
-    
-    item_type = jf_item.get("Type") or jf_item.get("MediaType")
-    parent_id = jf_item.get("ParentId")
 
-    runtime_seconds = 0
-    rt = jf_item.get("RunTimeTicks") or jf_item.get("RunTimeTick") or 0
-    try:
-        rt_int = int(rt) if rt is not None else 0
-        runtime_seconds = int(rt_int / 10_000_000)
-    except Exception:
-        runtime_seconds = 0
+    runtime_ticks = jf_item.get("RunTimeTicks") or jf_item.get("RunTimeTick") or 0
+    runtime_seconds = int(runtime_ticks) // 10_000_000 if str(runtime_ticks).isdigit() else 0
 
-    size_bytes = 0
-    try:
-        m_sources = jf_item.get("MediaSources") or []
-        if isinstance(m_sources, list) and m_sources:
-            for src in m_sources:
-                if not isinstance(src, dict):
-                    continue
-                s = src.get("Size") or src.get("size") or 0
-                try:
-                    size_bytes += int(s)
-                except Exception:
-                    continue
-    except Exception:
-        size_bytes = 0
-
-    date_created = _parse_jf_date(jf_item.get("DateCreated"))
+    size_bytes = sum(
+        int(src.get("Size") or src.get("size") or 0)
+        for src in jf_item.get("MediaSources", [])
+        if isinstance(src, dict)
+    )
 
     return {
         "jellyfin_id": jf_id,
         "library_id": library_internal_id,
-        "parent_id": parent_id,
+        "parent_id": jf_item.get("ParentId"),
         "name": name,
-        "type": item_type,
+        "type": jf_item.get("Type") or jf_item.get("MediaType"),
         "runtime_seconds": runtime_seconds,
         "size_bytes": size_bytes,
-        "date_created": date_created,
+        "date_created": _parse_jf_date(jf_item.get("DateCreated")),
     }
+
 
 def map_items(
     jf_items: List[Dict[str, Any]],
-    library_internal_id: int
+    library_internal_id: int,
 ) -> List[Dict[str, Any]]:
     """
     Transform a list of Jellyfin items into Item table row dicts.
+    
+    :param jf_items: List of Jellyfin item dicts
+    :param library_internal_id: Internal database ID for library
+    :return: List of mapped item dicts
     """
-    results: List[Dict[str, Any]] = []
-    for it in jf_items or []:
-        mapped = map_item(it, library_internal_id)
-        if mapped:
-            results.append(mapped)
-    return results
+    return [
+        m
+        for item in jf_items or []
+        if (m := map_item(item, library_internal_id))
+    ]
+
+
+# -------------------------
+# Playback events
+# -------------------------
 
 def map_playback_event(
     jf_event: Dict[str, Any],
-    username: Optional[str] = None
+    username: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     Transform a Jellyfin playback event into a PlaybackActivity table row dict.
+    
+    :param jf_event: Jellyfin playback event object
+    :param username: Optional username to include with activity row
+    :return: A dict representing the playback activity row
     """
-    user_id = (jf_event.get("UserId") or "").strip()
-    item_id = (jf_event.get("ItemId") or "").strip()
+    user_id = _clean_str(jf_event.get("UserId"))
+    item_id = _clean_str(jf_event.get("ItemId"))
 
     if not user_id or not item_id:
         return None
 
-    activity_log_id = jf_event.get("Id") or jf_event.get("ActivityId")
-
-    event_name = (jf_event.get("Name") or "").strip()
-
-    activity_timestamp = jf_event.get("Date") or jf_event.get("ActivityDate")
-    activity_at = None
-    if activity_timestamp is not None:
-        try:
-            if isinstance(activity_timestamp, (int, float)):
-                ts = int(activity_timestamp)
-                if ts > 10**12:
-                    ts = int(ts / 1000)
-                activity_at = ts
-            else:
-                from datetime import datetime
-                s = str(activity_timestamp).strip()
-                dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
-                activity_at = int(dt.timestamp())
-        except Exception:
-            import time as _time
-            activity_at = int(_time.time())
-    else:
-        import time as _time
-        activity_at = int(_time.time())
+    activity_at = (
+        _parse_jf_date(jf_event.get("Date") or jf_event.get("ActivityDate"))
+        or int(time.time())
+    )
 
     return {
-        "activity_log_id": activity_log_id,
+        "activity_log_id": jf_event.get("Id") or jf_event.get("ActivityId"),
         "user_id": user_id,
         "item_id": item_id,
-        "event_name": event_name,
+        "event_name": _clean_str(jf_event.get("Name")),
         "activity_at": activity_at,
         "username_denorm": username,
     }
@@ -224,20 +246,23 @@ def map_playback_event(
 
 def map_playback_events(
     jf_events: List[Dict[str, Any]],
-    user_lookup: Optional[Dict[str, str]] = None
+    user_lookup: Optional[Dict[str, str]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Transform a list of Jellyfin playback events into PlaybackActivity
     table row dicts.
+    
+    :param jf_events: List of Jellyfin playback event dicts
+    :param user_lookup: Optional mapping of user_id -> username
+    :return: List of mapped playback activity dicts
     """
-    results: List[Dict[str, Any]] = []
-    for event in jf_events:
-        user_id = (event.get("UserId") or "").strip()
-        username = None
-        if user_lookup and user_id:
-            username = user_lookup.get(user_id)
+    results = []
 
-        mapped = map_playback_event(event, username)
-        if mapped:
+    for event in jf_events or []:
+        user_id = _clean_str(event.get("UserId"))
+        username = user_lookup.get(user_id) if user_lookup and user_id else None
+
+        if mapped := map_playback_event(event, username):
             results.append(mapped)
+
     return results
