@@ -395,11 +395,6 @@ class SyncService:
         logging.info("[INFO] Starting Incremental Activity Log Sync")
 
         start_time = time.time()
-        task_id = self.repository.create_task_log(
-            name="Activity Log Incremental Sync",
-            task_type="sync",
-            execution_type="incremental"
-        )
 
         processed = 0
         errors: List[str] = []
@@ -421,15 +416,6 @@ class SyncService:
                     items_synced=0,
                     errors=[]
                 )
-                try:
-                    self.repository.complete_task_log(
-                        task_id=task_id,
-                        result="SUCCESS",
-                        log_data={"skipped": True, "reason": "no_last_activity_marker"}
-                    )
-                except Exception:
-                    pass
-                return result
 
             if last:
                 min_ts = int(last)
@@ -510,12 +496,6 @@ class SyncService:
                 errors=errors,
             )
 
-            self.repository.complete_task_log(
-                task_id=task_id,
-                result=("SUCCESS" if result.success else "FAILED"),
-                log_data=result.to_dict(),
-            )
-
             logging.info("[INFO] Incremental Activity Log Sync Complete")
 
             return result
@@ -531,14 +511,6 @@ class SyncService:
                 items_synced=processed,
                 errors=errors,
             )
-            try:
-                self.repository.complete_task_log(
-                    task_id=task_id,
-                    result="FAILED",
-                    log_data=result.to_dict(),
-                )
-            except Exception:
-                pass
             return result
         
     def sync_initial(self) -> SyncResult:
